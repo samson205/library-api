@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.auth.schemas import UserCreate, RegisterResponse
+from app.users.schemas import UserCreate
+from app.auth.schemas import RegisterResponse
 from app.auth.services import AuthService
 from app.auth.dependencies import get_auth_service
 

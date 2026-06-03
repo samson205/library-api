@@ -4,7 +4,7 @@ import jwt
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
 
-from app.config import SECRET_KEY, ALGORITHM
+from app.core.config import SECRET_KEY, ALGORITHM
 
 if not ALGORITHM or not SECRET_KEY:
     raise Exception

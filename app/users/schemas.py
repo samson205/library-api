@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 class UserCreate(BaseModel):
     email: Annotated[EmailStr, Field(..., description="Email пользователя")]
     password: Annotated[str, Field(..., min_length=8, description="Пароль")]
-    role: Annotated[str, Field(default="reader", pattern="^(reader|author)$", description="Роль: 'reader' или 'author'")]
 
 
 class UserRead(BaseModel):

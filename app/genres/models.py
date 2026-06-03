@@ -14,3 +14,5 @@ class Genre(Base):
 
     parent: Mapped["Genre | None"] = relationship("Genre", back_populates="children", remote_side="Genre.id")
     children: Mapped[list["Genre"]] = relationship("Genre", back_populates="parent")
+
+    books: Mapped[list["Books"]] = relationship("Book", back_populates="genre") # type: ignore

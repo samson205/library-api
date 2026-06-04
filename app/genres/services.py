@@ -33,6 +33,16 @@ class GenreService:
         result = await self.db.scalars(select(Genre).where(Genre.is_active == True))
         return list(result.all())
     
+    async def get_genre_by_id(self, genre_id: int) -> Genre:
+        result = await self.db.scalars(select(Genre).where(Genre.id == genre_id, Genre.is_active == True))
+        genre = result.first()
+        if not genre:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Genre not found"
+            )
+        return genre
+    
     async def update_genre(self, data: GenreUpdate, genre_id: int) -> Genre:
         upd_data = data.model_dump(exclude_unset=True)
         result = await self.db.scalars(

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends
 
-from app.books.schemas import BookCreate, BookRead
+from app.books.schemas import BookCreate, BookRead, BookUpdate
 from app.books.services import BookService
 from app.books.dependencies import get_book_service
 from app.users.models import User
@@ -24,4 +24,15 @@ async def get_all_books(
     service: BookService = Depends(get_book_service)
 ):
     result = await service.get_all_books()
+    return result
+
+
+@router.put("/{book_id}", response_model=BookRead)
+async def update_book(
+    book_id: int,
+    data: BookUpdate,
+    admin: User = Depends(get_current_admin),
+    service: BookService = Depends(get_book_service)
+):
+    result = await service.update_book(data, book_id)
     return result

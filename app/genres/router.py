@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, status, Depends
 
 from app.genres.schemas import GenreRead, GenreCreate, GenreUpdate
 from app.genres.services import GenreService
@@ -9,7 +9,7 @@ from app.users.dependencies import get_current_admin
 router = APIRouter(prefix="/genres", tags=["genres"])
 
 
-@router.post("/", response_model=GenreRead)
+@router.post("/", response_model=GenreRead, status_code=status.HTTP_201_CREATED)
 async def create_genre(
     data: GenreCreate,
     admin: User = Depends(get_current_admin),

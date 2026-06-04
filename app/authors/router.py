@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, status, Depends
 
 from app.authors.schemas import AuthorRead, AuthorCreate
 from app.authors.services import AuthorService
@@ -9,7 +9,7 @@ from app.users.dependencies import get_current_admin
 router = APIRouter(prefix="/authors", tags=["authors"])
 
 
-@router.post("/", response_model=AuthorRead)
+@router.post("/", response_model=AuthorRead, status_code=status.HTTP_201_CREATED)
 async def create_author(
     data: AuthorCreate,
     admin: User = Depends(get_current_admin),

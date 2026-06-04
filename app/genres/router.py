@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.genres.schemas import GenreRead, GenreCreate
+from app.genres.schemas import GenreRead, GenreCreate, GenreUpdate
 from app.genres.services import GenreService
 from app.genres.dependencies import get_genre_service
 from app.users.models import User
@@ -24,4 +24,15 @@ async def get_all_genres(
     service: GenreService = Depends(get_genre_service)
 ):
     result = await service.get_all_genres()
+    return result
+
+
+@router.put("/{genre_id}", response_model=GenreRead)
+async def update_genre(
+    genre_id: int,
+    data: GenreUpdate,
+    admin: User = Depends(get_current_admin),
+    service: GenreService = Depends(get_genre_service)
+):
+    result = await service.update_genre(data, genre_id)
     return result

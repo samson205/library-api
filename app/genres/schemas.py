@@ -15,3 +15,8 @@ class GenreRead(BaseModel):
     is_active: Annotated[bool, Field(..., description="Активность жанра")]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class GenreUpdate(BaseModel):
+    name: Annotated[str | None, Field(None, description="Новое название жанра")]
+    parent_id: Annotated[int | None, Field(None, description="Новый ID родительского жанра")]

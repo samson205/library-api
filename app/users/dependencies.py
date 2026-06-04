@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.users.models import User
-from app.auth.services import UserService
+from app.users.services import UserService, UserBookService
+from app.books.services import BookService
+from app.books.dependencies import get_book_service
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -37,3 +39,10 @@ async def get_current_admin(user: User = Depends(get_current_user)) -> User:
 
 async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
     return UserService(db)
+
+
+async def get_user_book_service(
+    db: AsyncSession = Depends(get_db),
+    book_service: BookService = Depends(get_book_service)
+) -> UserBookService:
+    return UserBookService(db, book_service)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Response
 
 from app.books.schemas import BookCreate, BookRead, BookUpdate
 from app.books.services import BookService
@@ -36,3 +36,13 @@ async def update_book(
 ):
     result = await service.update_book(data, book_id)
     return result
+
+
+@router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def soft_delete_book(
+    book_id: int,
+    admin: User = Depends(get_current_admin),
+    service: BookService = Depends(get_book_service)
+):
+    await service.soft_delete_book(book_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

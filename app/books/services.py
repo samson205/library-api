@@ -1,11 +1,12 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.books.schemas import BookCreate, BookUpdate
 from app.books.models import Book
 from app.authors.services import AuthorService
+from app.authors.models import Author
 from app.genres.services import GenreService
 
 
@@ -41,21 +42,24 @@ class BookService:
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
+            .options(with_loader_criteria(Author, Author.is_active == True))
             .where(Book.is_active == True)
         )
-        return list(result.all())
+        books = result.all()
+        return [b for b in books if len(b.authors) > 0]
     
     async def get_book_by_id(self, book_id: int) -> Book:
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
+            .options(with_loader_criteria(Author, Author.is_active == True))
             .where(Book.id == book_id, Book.is_active == True)
         )
         book = result.first()
-        if not book:
+        if not book or len(book.authors) == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Book not found"
+                detail="Book not found or inactive"
             )
         return book
     
@@ -80,3 +84,9 @@ class BookService:
         await self.db.commit()
         await self.db.refresh(book)
         return book
+
+    async def soft_delete_book(self, book_id: int) -> None:
+        book = await self.get_book_by_id(book_id)
+        book.is_active = False
+        await self.db.commit()
+    

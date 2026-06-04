@@ -47,3 +47,9 @@ class AuthorService:
         await self.db.commit()
         await self.db.refresh(author)
         return author
+
+    async def soft_delete_author(self, author_id: int) -> None:
+        author = await self.get_author_by_id(author_id)
+        author.is_active = False
+        await self.db.commit()
+        

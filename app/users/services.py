@@ -23,8 +23,7 @@ class UserService:
         
         user = User(
             email=data.email,
-            hashed_password=hash_password(data.password),
-            role=data.role
+            hashed_password=hash_password(data.password)
         )
         self.db.add(user)
         await self.db.commit()

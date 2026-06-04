@@ -74,3 +74,7 @@ class GenreService:
         await self.db.refresh(genre)
         return genre
     
+    async def soft_delete_genre(self, genre_id: int) -> None:
+        genre = await self.get_genre_by_id(genre_id)
+        genre.is_active = False
+        await self.db.commit()

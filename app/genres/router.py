@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Response
 
 from app.genres.schemas import GenreRead, GenreCreate, GenreUpdate
 from app.genres.services import GenreService
@@ -36,3 +36,13 @@ async def update_genre(
 ):
     result = await service.update_genre(data, genre_id)
     return result
+
+
+@router.delete("/{genre_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def soft_delete_genre(
+    genre_id: int,
+    admin: User = Depends(get_current_admin),
+    service: GenreService = Depends(get_genre_service)
+):
+    await service.soft_delete_genre(genre_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Response
 
 from app.authors.schemas import AuthorRead, AuthorCreate, AuthorUpdate
 from app.authors.services import AuthorService
@@ -36,3 +36,13 @@ async def update_author(
 ):
     result = await service.update_author(data, author_id)
     return result
+
+
+@router.delete("/{author_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def soft_delete_author(
+    author_id: int,
+    admin: User = Depends(get_current_admin),
+    service: AuthorService = Depends(get_author_service)
+):
+    await service.soft_delete_author(author_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

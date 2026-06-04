@@ -94,3 +94,18 @@ class UserBookService:
 
         return [ub for ub in user_books if ub.book is not None and len(ub.book.authors) > 0]
     
+    async def remove_book_from_library(self, book_id: int, user_id: int) -> None:
+        result = await self.db.scalars(
+            select(UserBook)
+            .where(UserBook.book_id == book_id, UserBook.user_id == user_id)
+        )
+        user_book = result.first()
+        if not user_book:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Book not found in your library"
+            )
+        
+        await self.db.delete(user_book)
+        await self.db.commit()
+        

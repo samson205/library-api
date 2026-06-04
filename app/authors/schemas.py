@@ -24,3 +24,9 @@ class AuthorShortRead(BaseModel):
     last_name: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AuthorUpdate(BaseModel):
+    first_name: Annotated[str | None, Field(None, description="Имя автора")]
+    last_name: Annotated[str | None, Field(None, description="Фамилия автора")]
+    bio: Annotated[str | None, Field(None, max_length=300, description="Биография автора")]

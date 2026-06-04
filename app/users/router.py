@@ -1,11 +1,18 @@
-from fastapi import APIRouter, status, Depends, Query, Response
+from fastapi import APIRouter, status, Depends, Query
 
-from app.users.schemas import UserBookRead, UserBookCreate, UserLibraryRead
+from app.users.schemas import UserBookRead, UserBookCreate, UserLibraryRead, UserRead
 from app.users.models import User, BookShelfType
 from app.users.dependencies import get_current_user, get_user_book_service
 from app.users.services import UserBookService
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/me", response_model=UserRead)
+async def get_me(
+    user: User = Depends(get_current_user)
+):
+    return user
 
 
 @router.get("/me/books", response_model=UserLibraryRead)
@@ -38,4 +45,4 @@ async def delete_book_from_library(
     service: UserBookService = Depends(get_user_book_service)
 ):
     await service.remove_book_from_library(book_id, user.id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return None

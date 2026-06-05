@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from app.core.schemas import BaseList
+
 
 class ReviewCreate(BaseModel):
     book_id: Annotated[int, Field(..., description="ID книги")]
@@ -19,3 +21,12 @@ class ReviewRead(BaseModel):
     created_at: Annotated[datetime, Field(..., description="Дата создания отзыва")]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReviewList(BaseList):
+    items: Annotated[list["ReviewRead"], Field(..., description="Отзывы")]
+
+
+class ReviewFilters(BaseModel):
+    user_id: Annotated[int | None, Field(None, description="ID пользователя")]
+    book_id: Annotated[int | None, Field(None, description="ID книги")]

@@ -2,7 +2,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.reviews.schemas import ReviewCreate
+from app.core.schemas import PaginationSchema
+from app.reviews.schemas import ReviewCreate, ReviewFilters
 from app.reviews.models import Review
 from app.books.services import BookService
 
@@ -33,14 +34,21 @@ class ReviewService:
         await self.db.commit()
         await self.db.refresh(review)
         return review
-
-    async def get_reviews_by_book_id(self, book_id: int) -> list[Review]:
-        await self.book_service.get_book_by_id(book_id)
+    
+    async def get_reviews(self, pagination: PaginationSchema, filters_schema: ReviewFilters) ->  dict:
+        filters_dict = filters_schema.model_dump(exclude_unset=True, exclude_none=True)
+        filters = self._build_filters(**filters_dict)
         result = await self.db.scalars(
             select(Review)
-            .where(Review.book_id == book_id)
+            .where(*filters)
+            .order_by(Review.id)
+            .offset((pagination.page - 1) * pagination.page_size)
+            .limit(pagination.page_size)
         )
-        return list(result.all())
+        return {
+            "total": await self._get_reviews_count(filters),
+            "items": list(result.all())
+        }
     
     async def _get_avg_rating(self, book_id: int) -> float:
         result = await self.db.scalars(
@@ -50,4 +58,18 @@ class ReviewService:
 
         avg_rating = result.first() or 0.0
         return avg_rating
+    
+    async def _get_reviews_count(self, filters: list) -> int:
+        result = await self.db.scalar(select(func.count(Review.id)).where(*filters))
+        return result or 0
+    
+    def _build_filters(self, **kwargs) -> list:
+        filters = []
+
+        if kwargs.get("user_id"):
+            filters.append(Review.user_id == kwargs["user_id"])
+        if kwargs.get("book_id"):
+            filters.append(Review.book_id == kwargs["book_id"])
+
+        return filters
     

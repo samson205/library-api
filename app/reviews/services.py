@@ -36,8 +36,7 @@ class ReviewService:
         return review
     
     async def get_reviews(self, pagination: PaginationSchema, filters_schema: ReviewFilters) ->  dict:
-        filters_dict = filters_schema.model_dump(exclude_unset=True, exclude_none=True)
-        filters = self._build_filters(**filters_dict)
+        filters = self._build_filters(**filters_schema.model_dump(exclude_unset=True, exclude_none=True))
         result = await self.db.scalars(
             select(Review)
             .where(*filters)

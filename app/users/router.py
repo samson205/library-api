@@ -1,7 +1,8 @@
 from fastapi import APIRouter, status, Depends, Query
 
-from app.users.schemas import UserBookRead, UserBookCreate, UserLibraryRead, UserRead
-from app.users.models import User, BookShelfType
+from app.core.schemas import PaginationSchema
+from app.users.schemas import UserBookRead, UserBookCreate, UserLibraryList, UserRead, UserBookFilters
+from app.users.models import User
 from app.users.dependencies import get_current_user, get_user_book_service
 from app.users.services import UserBookService
 
@@ -15,16 +16,20 @@ async def get_me(
     return user
 
 
-@router.get("/me/books", response_model=UserLibraryRead)
+@router.get("/me/books", response_model=UserLibraryList)
 async def get_user_books(
+    pagination: PaginationSchema = Depends(),
+    filters: UserBookFilters = Depends(),
     user: User = Depends(get_current_user),
-    bookshelf_type: BookShelfType | None = Query(None, description="Книжная полка"),
     service: UserBookService = Depends(get_user_book_service)
 ):
-    result = await service.get_library(user.id, bookshelf_type)
+    result = await service.get_library(user.id, pagination, filters)
     return {
-        "bookshelf_type": bookshelf_type,
-        "books": result
+        "total": result["total"],
+        "page": pagination.page,
+        "page_size": pagination.page_size,
+        "bookshelf_type": filters.bookshelf_type,
+        "items": result["items"]
     }
 
 

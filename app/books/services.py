@@ -27,6 +27,7 @@ class BookService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="One or more of the specified author IDs were not found"
             )
+        await self.genre_service.get_genre_by_id(data.genre_id)
         book = Book(
             title=data.title,
             description=data.description,

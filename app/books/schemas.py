@@ -2,6 +2,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.schemas import BaseList
 from app.authors.schemas import AuthorShortRead
 
 
@@ -28,3 +29,7 @@ class BookUpdate(BaseModel):
     description: Annotated[str | None, Field(None, max_length=500, description="Новое описание книги")]
     genre_id: Annotated[int | None, Field(None, description="Новый ID жанра")]
     authors_ids: Annotated[list[int] | None, Field(None, description="Новый список ID авторов книги")]
+
+
+class BookList(BaseList):
+    items: Annotated[list["BookRead"], Field(..., description="Список книг")]

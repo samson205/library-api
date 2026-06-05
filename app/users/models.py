@@ -41,3 +41,7 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    reviews: Mapped[list["Review"]] = relationship( # type: ignore
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )

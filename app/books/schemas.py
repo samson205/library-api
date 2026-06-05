@@ -16,6 +16,7 @@ class BookRead(BaseModel):
     id: Annotated[int, Field(..., description="ID книги")]
     title: Annotated[str, Field(..., description="Название книги")]
     description: Annotated[str | None, Field(..., description="Описание книги")]
+    rating: Annotated[float, Field(..., description="Оценка книги")]
     genre_id: Annotated[int, Field(..., description="ID жанра")]
     authors: Annotated[list[AuthorShortRead], Field(..., description="Авторы книги")]
 

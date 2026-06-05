@@ -15,6 +15,7 @@ from app.users.models import User, UserBook
 from app.genres.models import Genre
 from app.authors.models import Author
 from app.books.models import Book, book_authors
+from app.reviews.models import Review
 
 load_dotenv()
 

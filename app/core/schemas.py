@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PaginationSchema(BaseModel):
@@ -13,3 +13,4 @@ class BaseList(BaseModel):
     page: Annotated[int, Field(..., description="Текущая страница")]
     page_size: Annotated[int, Field(..., description="Кол-во элементов на странице")]
     
+    model_config = ConfigDict(from_attributes=True)

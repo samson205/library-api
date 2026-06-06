@@ -38,8 +38,6 @@ class UserLibraryList(BaseList):
     bookshelf_type: Annotated[BookShelfType | None, Field(..., description="Название книжной полки")]
     items: Annotated[list["UserBookRead"], Field(..., description="Книги на полке")]
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class UserBookFilters(BaseModel):
     bookshelf_type: Annotated[BookShelfType | None, Field(None, description="Название книжной полки")]

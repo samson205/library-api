@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.schemas import BaseList
@@ -33,3 +34,10 @@ class BookUpdate(BaseModel):
 
 class BookList(BaseList):
     items: Annotated[list["BookRead"], Field(..., description="Список книг")]
+
+
+class BookFilters(BaseModel):
+    # book_id: Annotated[int | None, Field(..., description="ID книги")]
+    author_id: Annotated[list[int] | None, Field(Query(default=None), description="ID авторов")]
+    genre_id: Annotated[int | None, Field(None, description="ID жанра")]
+    rating: Annotated[int | None, Field(None, ge=1, le=5, description="Оценка книги")]

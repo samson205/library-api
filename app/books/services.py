@@ -1,9 +1,10 @@
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.books.schemas import BookCreate, BookUpdate
+from app.core.schemas import PaginationSchema
+from app.books.schemas import BookCreate, BookUpdate, BookFilters
 from app.books.models import Book
 from app.authors.services import AuthorService
 from app.authors.models import Author
@@ -39,15 +40,23 @@ class BookService:
         new_book = await self.get_book_by_id(book.id)
         return new_book
 
-    async def get_all_books(self) -> list[Book]:
+    async def get_books(self, pagination: PaginationSchema, filters_schema: BookFilters) -> dict:
+        filters = self._build_filters(**filters_schema.model_dump(exclude_unset=True, exclude_none=True))
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
             .options(with_loader_criteria(Author, Author.is_active == True))
-            .where(Book.is_active == True)
+            .where(*filters)
+            .order_by(Book.id)
+            .offset((pagination.page - 1) * pagination.page_size)
+            .limit(pagination.page_size)
         )
-        books = result.all()
-        return [b for b in books if len(b.authors) > 0]
+        items = list(result.unique().all())
+        total = await self._get_count_books(filters)
+        return {
+            "total": total,
+            "items": items
+        }
     
     async def get_book_by_id(self, book_id: int) -> Book:
         result = await self.db.scalars(
@@ -90,4 +99,24 @@ class BookService:
         book = await self.get_book_by_id(book_id)
         book.is_active = False
         await self.db.commit()
-    
+
+    async def _get_count_books(self, filters: list) -> int:
+        result = await self.db.scalar(select(func.count(Book.id)).where(*filters))
+        return result or 0
+
+    def _build_filters(self, **kwargs) -> list:
+        filters = [Book.is_active == True]
+
+        if kwargs.get("genre_id"):
+            filters.append(Book.genre_id == kwargs["genre_id"])
+        if kwargs.get("rating"):
+            filters.append(Book.rating >= kwargs["rating"])
+        if kwargs.get("author_id"):
+            filters.append(
+                Book.authors.any(
+                    (Author.id.in_(kwargs["author_id"])) &
+                    (Author.is_active == True)
+                )
+            )
+
+        return filters

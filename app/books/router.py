@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from fastapi import APIRouter, status, Depends, Query
 
 from app.core.schemas import PaginationSchema
@@ -25,6 +23,15 @@ async def get_books(
         "page_size": pagination.page_size,
         "items": result["items"]
     }
+
+
+@router.get("/{book_id}", response_model=BookRead)
+async def get_book(
+    book_id: int,
+    service: BookService = Depends(get_book_service)
+):
+    result = await service.get_book_by_id(book_id)
+    return result
 
 
 @router.post("/", response_model=BookRead, status_code=status.HTTP_201_CREATED)

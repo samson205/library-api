@@ -2,10 +2,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
-from app.core.schemas import BaseList
-from app.users.models import BookShelfType
-from app.books.schemas import BookRead
-
 
 class UserCreate(BaseModel):
     email: Annotated[EmailStr, Field(..., description="Email пользователя")]
@@ -19,25 +15,3 @@ class UserRead(BaseModel):
     is_active: Annotated[bool, Field(..., description="Активность пользователя")]
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class UserBookCreate(BaseModel):
-    book_id: Annotated[int, Field(..., description="ID книги")]
-    bookshelf_type: Annotated[BookShelfType, Field(BookShelfType.WANT_TO_READ, description="Книжная полка")]
-
-
-class UserBookRead(BaseModel):
-    id: Annotated[int, Field(...)]
-    status: Annotated[BookShelfType, Field(...)]
-    book: Annotated["BookRead", Field(...)]
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserLibraryList(BaseList):
-    bookshelf_type: Annotated[BookShelfType | None, Field(..., description="Название книжной полки")]
-    items: Annotated[list["UserBookRead"], Field(..., description="Книги на полке")]
-
-
-class UserBookFilters(BaseModel):
-    bookshelf_type: Annotated[BookShelfType | None, Field(None, description="Название книжной полки")]

@@ -1,0 +1,117 @@
+from fastapi import HTTPException, status
+
+from sqlalchemy import select, func, or_
+from sqlalchemy.orm import selectinload, with_loader_criteria
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.schemas import PaginationSchema
+from app.shelves.schemas import ShelfCreate, ShelfFilters
+from app.shelves.models import Shelf
+from app.books.models import Book
+from app.books.services import BookService
+from app.authors.models import Author
+
+
+class ShelfService:
+    db: AsyncSession
+    book_service: BookService
+
+    def __init__(self, db: AsyncSession, book_service: BookService) -> None:
+        self.db = db
+        self.book_service = book_service
+
+    async def create_shelf(self, data: ShelfCreate, user_id: int) -> Shelf:
+        shelf = Shelf(**data.model_dump(), user_id=user_id)
+        self.db.add(shelf)
+        await self.db.commit()
+        await self.db.refresh(shelf)
+        return shelf
+    
+    async def get_shelves(self, current_user_id: int | None, pagination: PaginationSchema, filters_schema: ShelfFilters) -> dict:
+        filters = self._build_filters(current_user_id, **filters_schema.model_dump(exclude_none=True, exclude_unset=True))
+        result = await self.db.scalars(
+            select(Shelf)
+            .where(*filters)
+            .order_by(Shelf.id)
+            .offset((pagination.page - 1) * pagination.page_size)
+            .limit(pagination.page_size)
+        )
+        items = list(result.all())
+        total = await self._get_count_shelves(filters)
+        return {
+            "total": total,
+            "items": items
+        }
+    
+    async def get_shelf_by_id(self, shelf_id: int, user_id: int | None) -> Shelf:
+        result = await self.db.scalars(
+            select(Shelf)
+            .options(selectinload(Shelf.books).selectinload(Book.authors))
+            .options(with_loader_criteria(Book, Book.is_active == True))
+            .options(with_loader_criteria(Author, Author.is_active == True))
+            .where(
+                Shelf.id == shelf_id,
+                or_(
+                    Shelf.is_private == False,
+                    Shelf.user_id == user_id
+                )
+            )
+        )
+        shelf = result.first()
+        if not shelf:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shelf not found"
+            )
+        return shelf
+    
+    async def add_book_to_shelf(self, shelf_id: int, book_id: int, user_id: int) -> None:
+        result = await self.db.scalars(
+            select(Shelf)
+            .options(selectinload(Shelf.books))
+            .where(Shelf.id == shelf_id, Shelf.user_id == user_id)
+        )
+        shelf = result.first()
+        if not shelf:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shelf not found or you don't have access"
+            )
+        
+        book = await self.book_service.get_book_by_id(book_id)
+        if book in shelf.books:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Book is already on this shelf"
+            )
+        
+        shelf.books.append(book)
+        await self.db.commit()
+    
+    async def _get_count_shelves(self, filters: list) -> int:
+        result = await self.db.scalar(
+            select(func.count(Shelf.id))
+            .where(*filters)
+        )
+        return result or 0
+
+    def _build_filters(self, current_user_id: int | None, **kwargs) -> list:
+        filters = []
+
+        if kwargs.get("user_id"):
+            target_user_id = kwargs["user_id"]
+            if current_user_id == target_user_id:
+                filters.append(Shelf.user_id == target_user_id)
+            else:
+                filters.append(Shelf.user_id == target_user_id)
+                filters.append(Shelf.is_private == False)
+        else:
+            filters.append(
+                or_(
+                    Shelf.is_private == False,
+                    Shelf.user_id == current_user_id
+                )
+            )
+
+        return filters
+    

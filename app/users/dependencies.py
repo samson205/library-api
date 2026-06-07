@@ -13,12 +13,16 @@ from app.books.dependencies import get_book_service
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-async def get_current_user(token: str = Depends(oauth2_schema), db: AsyncSession = Depends(get_db)) -> User:
+async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+    return UserService(db)
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_schema),
+    user_service: UserService = Depends(get_user_service)
+) -> User:
     payload = decode_token(token, "access")
-    result = await db.scalars(
-        select(User).where(User.email == payload["sub"], User.is_active == True)
-    )
-    user = result.first()
+    user = await user_service.get_user_by_email(payload["sub"])
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -28,6 +32,18 @@ async def get_current_user(token: str = Depends(oauth2_schema), db: AsyncSession
     return user
 
 
+async def get_current_user_optional(
+    token: str = Depends(oauth2_schema),
+    user_service: UserService = Depends(get_user_service)
+) -> User | None:
+    try:
+        payload = decode_token(token, "access")
+        user = await user_service.get_user_by_email(payload["sub"])
+        return user
+    except Exception:
+        return None
+
+
 async def get_current_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(
@@ -35,10 +51,6 @@ async def get_current_admin(user: User = Depends(get_current_user)) -> User:
             detail="Only admins can perform this action"
         )
     return user
-
-
-async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
-    return UserService(db)
 
 
 async def get_user_book_service(

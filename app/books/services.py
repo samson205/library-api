@@ -101,11 +101,14 @@ class BookService:
         await self.db.commit()
 
     async def _get_count_books(self, filters: list) -> int:
-        result = await self.db.scalar(select(func.count(Book.id)).where(*filters))
+        result = await self.db.scalar(
+            select(func.count(Book.id))
+            .where(*filters)
+        )
         return result or 0
 
     def _build_filters(self, **kwargs) -> list:
-        filters = [Book.is_active == True]
+        filters = [Book.is_active == True, Book.authors.any(Author.is_active == True)]
 
         if kwargs.get("genre_id"):
             filters.append(Book.genre_id == kwargs["genre_id"])

@@ -11,11 +11,12 @@ from dotenv import load_dotenv
 from alembic import context
 
 from app.core.database import Base
-from app.users.models import User, UserBook
+from app.users.models import User
 from app.genres.models import Genre
 from app.authors.models import Author
 from app.books.models import Book, book_authors
 from app.reviews.models import Review
+from app.shelves.models import Shelf, shelf_books
 
 load_dotenv()
 

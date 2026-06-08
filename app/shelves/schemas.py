@@ -1,0 +1,34 @@
+from typing import Annotated
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.schemas import BaseList
+from app.books.schemas import BookRead
+
+
+class ShelfCreate(BaseModel):
+    title: Annotated[str, Field(..., max_length=100, description="Название полки")]
+    is_private: Annotated[bool, Field(default=False, description="Приватность полки")]
+
+
+class ShelfReadBase(BaseModel):
+    id: Annotated[int, Field(..., description="ID полки")]
+    title: Annotated[str, Field(..., description="Название книги")]
+    is_private: Annotated[bool, Field(..., description="Приватность полки")]
+    user_id: Annotated[int, Field(..., description="ID пользователя")]
+    created_at: Annotated[datetime, Field(..., description="Дата и время создания полки")]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ShelfRead(ShelfReadBase):
+    books: Annotated[list["BookRead"], Field(..., description="Книги на полке")]
+
+
+class ShelfList(BaseList):
+    items: Annotated[list["ShelfReadBase"], Field(..., description="Книжные полки")]
+
+
+class ShelfFilters(BaseModel):
+    user_id: Annotated[int | None, Field(None, description="ID пользователя")]

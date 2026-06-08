@@ -2,6 +2,7 @@ from sqlalchemy import Integer, String, Text, Float, Boolean, ForeignKey, Table,
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.shelves.models import shelf_books
 
 
 book_authors = Table(
@@ -25,3 +26,4 @@ class Book(Base):
     genre: Mapped["Genre"] = relationship("Genre", uselist=False, back_populates="books") # type: ignore
     authors: Mapped[list["Author"]] = relationship(back_populates="books", secondary=book_authors) # type: ignore
     reviews: Mapped[list["Review"]] = relationship("Review", uselist=True, back_populates="book") # type: ignore
+    shelves: Mapped[list["Shelf"]] = relationship("Shelf", secondary=shelf_books, back_populates="books") # type: ignore

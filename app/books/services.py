@@ -1,8 +1,9 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.utils import save_image
 from app.core.schemas import PaginationSchema
 from app.books.schemas import BookCreate, BookUpdate, BookFilters
 from app.books.models import Book
@@ -21,19 +22,21 @@ class BookService:
         self.author_service = author_service
         self.genre_service = genre_service
 
-    async def create_book(self, data: BookCreate) -> Book:
-        found_authors = await self.author_service.get_authors_by_ids(data.authors_ids)
-        if len(found_authors) != len(data.authors_ids):
+    async def create_book(self, data: BookCreate, image: UploadFile | None) -> Book:
+        found_authors = await self.author_service.get_authors_by_ids(data.author_ids)
+        if len(found_authors) != len(data.author_ids):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="One or more of the specified author IDs were not found"
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
+        image_url = await save_image(image) if image else None
         book = Book(
             title=data.title,
             description=data.description,
             genre_id=data.genre_id,
-            authors=found_authors
+            authors=found_authors,
+            image_url=image_url
         )
         self.db.add(book)
         await self.db.commit()

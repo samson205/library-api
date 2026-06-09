@@ -21,6 +21,7 @@ class Book(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     rating: Mapped[float] = mapped_column(Float, server_default="0")
     genre_id: Mapped[int] = mapped_column(ForeignKey("genres.id"), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     genre: Mapped["Genre"] = relationship("Genre", uselist=False, back_populates="books") # type: ignore

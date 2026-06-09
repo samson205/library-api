@@ -3,6 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.schemas import PaginationSchema
+from app.users.models import User
 from app.reviews.schemas import ReviewCreate, ReviewFilters
 from app.reviews.models import Review
 from app.books.services import BookService
@@ -48,6 +49,23 @@ class ReviewService:
             "total": await self._get_reviews_count(filters),
             "items": list(result.all())
         }
+    
+    async def delete_review(self, review_id: int, user: User) -> None:
+        result = await self.db.scalars(select(Review).where(Review.id == review_id))
+        review = result.first()
+        if not review:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Review not found"
+            )
+        if review.user_id != user.id and user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only delete your own reviews"
+            )
+
+        await self.db.delete(review)
+        await self.db.commit()
     
     async def _get_avg_rating(self, book_id: int) -> float:
         result = await self.db.scalars(

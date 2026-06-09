@@ -9,22 +9,28 @@ from app.users.dependencies import get_current_admin
 router = APIRouter(prefix="/genres", tags=["genres"])
 
 
+@router.get("/", response_model=list[GenreRead])
+async def get_all_genres(
+    service: GenreService = Depends(get_genre_service)
+): 
+    return await service.get_all_genres()
+
+
 @router.post("/", response_model=GenreRead, status_code=status.HTTP_201_CREATED)
 async def create_genre(
     data: GenreCreate,
     admin: User = Depends(get_current_admin),
     service: GenreService = Depends(get_genre_service)
 ):
-    result = await service.create_genre(data)
-    return result
+    return await service.create_genre(data)
 
 
-@router.get("/", response_model=list[GenreRead])
-async def get_all_genres(
+@router.get("/{genre_id}", response_model=GenreRead)
+async def get_genre_by_id(
+    genre_id: int,
     service: GenreService = Depends(get_genre_service)
 ):
-    result = await service.get_all_genres()
-    return result
+    return await service.get_genre_by_id(genre_id)
 
 
 @router.put("/{genre_id}", response_model=GenreRead)
@@ -34,8 +40,7 @@ async def update_genre(
     admin: User = Depends(get_current_admin),
     service: GenreService = Depends(get_genre_service)
 ):
-    result = await service.update_genre(data, genre_id)
-    return result
+    return await service.update_genre(data, genre_id)
 
 
 @router.delete("/{genre_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -45,4 +50,3 @@ async def soft_delete_genre(
     service: GenreService = Depends(get_genre_service)
 ):
     await service.soft_delete_genre(genre_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

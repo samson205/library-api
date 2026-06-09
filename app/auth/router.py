@@ -14,8 +14,7 @@ async def create_user(
     data: UserCreate,
     service: AuthService = Depends(get_auth_service)
 ):
-    result = await service.register_new_user(data)
-    return result
+    return await service.register_new_user(data)
 
 
 @router.post("/login")
@@ -23,8 +22,7 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
-    result = await service.create_tokens(form_data.username, form_data.password)
-    return result
+    return await service.create_tokens(form_data.username, form_data.password)
 
 
 @router.post("/access-token")
@@ -32,8 +30,7 @@ async def access_token(
     data: RefreshTokenRequest,
     service: AuthService = Depends(get_auth_service)
 ):
-    result = await service.create_access_token(data.refresh_token)
-    return result
+    return await service.create_access_token(data.refresh_token)
 
 
 @router.post("/refresh-token")
@@ -41,5 +38,4 @@ async def refresh_token(
     data: RefreshTokenRequest,
     service: AuthService = Depends(get_auth_service)
 ):
-    result = await service.create_refresh_token(data.refresh_token)
-    return result
+    return await service.create_refresh_token(data.refresh_token)

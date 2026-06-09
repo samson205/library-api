@@ -25,15 +25,6 @@ async def get_books(
     }
 
 
-@router.get("/{book_id}", response_model=BookRead)
-async def get_book(
-    book_id: int,
-    service: BookService = Depends(get_book_service)
-):
-    result = await service.get_book_by_id(book_id)
-    return result
-
-
 @router.post("/", response_model=BookRead, status_code=status.HTTP_201_CREATED)
 async def create_book(
     data: BookCreate,
@@ -41,6 +32,15 @@ async def create_book(
     service: BookService = Depends(get_book_service)
 ):
     result = await service.create_book(data)
+    return result
+
+
+@router.get("/{book_id}", response_model=BookRead)
+async def get_book(
+    book_id: int,
+    service: BookService = Depends(get_book_service)
+):
+    result = await service.get_book_by_id(book_id)
     return result
 
 

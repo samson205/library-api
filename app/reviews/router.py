@@ -33,3 +33,12 @@ async def create_review(
 ):
     result = await service.create_review(data, user.id)
     return result
+
+
+@router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_review(
+    review_id: int,
+    user: User = Depends(get_current_user),
+    service: ReviewService = Depends(get_review_service)
+):
+    await service.delete_review(review_id, user)

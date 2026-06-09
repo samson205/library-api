@@ -9,22 +9,28 @@ from app.users.dependencies import get_current_admin
 router = APIRouter(prefix="/authors", tags=["authors"])
 
 
+@router.get("/", response_model=list[AuthorRead])
+async def get_all_authors(
+    service: AuthorService = Depends(get_author_service)
+):
+    return await service.get_all_authors()
+
+
 @router.post("/", response_model=AuthorRead, status_code=status.HTTP_201_CREATED)
 async def create_author(
     data: AuthorCreate,
     admin: User = Depends(get_current_admin),
     service: AuthorService = Depends(get_author_service)
 ):
-    result = await service.create_author(data)
-    return result
+    return await service.create_author(data)
 
 
-@router.get("/", response_model=list[AuthorRead])
-async def get_all_authors(
+@router.get("/{author_id}", response_model=AuthorRead)
+async def get_author_by_id(
+    author_id: int,
     service: AuthorService = Depends(get_author_service)
 ):
-    result = await service.get_all_authors()
-    return result
+    return await service.get_author_by_id(author_id)
 
 
 @router.put("/{author_id}", response_model=AuthorRead)
@@ -34,8 +40,7 @@ async def update_author(
     admin: User = Depends(get_current_admin),
     service: AuthorService = Depends(get_author_service)
 ):
-    result = await service.update_author(data, author_id)
-    return result
+    return await service.update_author(data, author_id)
 
 
 @router.delete("/{author_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -45,4 +50,3 @@ async def soft_delete_author(
     service: AuthorService = Depends(get_author_service)
 ):
     await service.soft_delete_author(author_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

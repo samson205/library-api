@@ -1,9 +1,11 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE, MEDIA_ROOT
+from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.shelves.schemas import ShelfCreate, ShelfFilters
 from app.shelves.models import Shelf
@@ -20,10 +22,32 @@ class ShelfService:
         self.db = db
         self.book_service = book_service
 
-    async def create_shelf(self, data: ShelfCreate, user_id: int) -> Shelf:
-        shelf = Shelf(**data.model_dump(), user_id=user_id)
-        self.db.add(shelf)
-        await self.db.commit()
+    async def create_shelf(self, data: ShelfCreate, user_id: int, image: UploadFile | None) -> Shelf:
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
+        
+        images_path = MEDIA_ROOT / "shelves" / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
+        image_url = f"shelves/images/{image_name}" if image_name else None
+
+        try:
+            shelf = Shelf(**data.model_dump(), user_id=user_id, image_url=image_url)
+            self.db.add(shelf)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+
+            if image_name:
+                StorageService.remove_file(f"{images_path / image_name}")
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create shelf"
+            )
+        
         await self.db.refresh(shelf)
         return shelf
     

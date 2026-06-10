@@ -46,6 +46,7 @@ class BookService:
 
         images_path = MEDIA_ROOT / "books" / "images"
         image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
+        image_url = f"books/images/{image_name}" if image_name else None
 
         files_path = STORAGE_ROOT / "books" / "files"
         file_name, file_size = await StorageService.save_file(file, files_path, MAX_BOOK_SIZE)
@@ -56,7 +57,7 @@ class BookService:
                 description=data.description,
                 genre_id=data.genre_id,
                 authors=found_authors,
-                image_url=f"books/images/{image_name}"
+                image_url=image_url
             )
             self.db.add(book)
             await self.db.flush()
@@ -73,9 +74,9 @@ class BookService:
         except Exception:
             await self.db.rollback()
             if image_name:
-                StorageService.remove_file(f"{MEDIA_ROOT / 'books' / 'images' / image_name}")
+                StorageService.remove_file(f"{images_path / image_name}")
             if file_name:
-                StorageService.remove_file(f"{STORAGE_ROOT / 'books' / 'files' / file_name}")
+                StorageService.remove_file(f"{files_path / file_name}")
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

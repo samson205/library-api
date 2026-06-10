@@ -1,7 +1,9 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import ALLOWED_IMAGE_TYPES, MEDIA_ROOT, MAX_IMAGE_SIZE
+from app.core.services import StorageService
 from app.authors.models import Author
 from app.authors.schemas import AuthorCreate, AuthorUpdate
 
@@ -12,10 +14,31 @@ class AuthorService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def create_author(self, data: AuthorCreate) -> Author:
-        author = Author(**data.model_dump())
-        self.db.add(author)
-        await self.db.commit()
+    async def create_author(self, data: AuthorCreate, image: UploadFile | None) -> Author:
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
+        
+        images_path = MEDIA_ROOT / "authors" / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
+        image_url = f"authors/images/{image_name}" if image_name else None
+
+        try:
+            author = Author(**data.model_dump(), image_url=image_url)
+            self.db.add(author)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            if image_name:
+                StorageService.remove_file(f"{images_path / image_name}")
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create author"
+            )
+
         await self.db.refresh(author)
         return author
     

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, UploadFile, File
 
 from app.core.schemas import PaginationSchema
 from app.shelves.schemas import ShelfRead, ShelfReadBase, ShelfCreate, ShelfFilters, ShelfList
@@ -29,11 +29,12 @@ async def get_shelves(
 
 @router.post("/", response_model=ShelfReadBase, status_code=status.HTTP_201_CREATED)
 async def create_shelf(
-    data: ShelfCreate,
+    data: ShelfCreate = Depends(ShelfCreate.as_form),
+    image: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     service: ShelfService = Depends(get_shelf_service)
 ):
-    return await service.create_shelf(data, user.id)
+    return await service.create_shelf(data, user.id, image)
 
 
 @router.get("/{shelf_id}", response_model=ShelfRead)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, Response
+from fastapi import APIRouter, status, Depends, UploadFile, File
 
 from app.authors.schemas import AuthorRead, AuthorCreate, AuthorUpdate
 from app.authors.services import AuthorService
@@ -18,11 +18,12 @@ async def get_all_authors(
 
 @router.post("/", response_model=AuthorRead, status_code=status.HTTP_201_CREATED)
 async def create_author(
-    data: AuthorCreate,
+    data: AuthorCreate = Depends(AuthorCreate.as_form),
+    image: UploadFile | None = File(None),
     admin: User = Depends(get_current_admin),
     service: AuthorService = Depends(get_author_service)
 ):
-    return await service.create_author(data)
+    return await service.create_author(data, image)
 
 
 @router.get("/{author_id}", response_model=AuthorRead)

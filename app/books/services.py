@@ -3,7 +3,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.utils import save_image
+from app.core.config import MEDIA_ROOT, MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES
+from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.books.schemas import BookCreate, BookUpdate, BookFilters
 from app.books.models import Book
@@ -23,6 +24,11 @@ class BookService:
         self.genre_service = genre_service
 
     async def create_book(self, data: BookCreate, image: UploadFile | None) -> Book:
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
         found_authors = await self.author_service.get_authors_by_ids(data.author_ids)
         if len(found_authors) != len(data.author_ids):
             raise HTTPException(
@@ -30,13 +36,14 @@ class BookService:
                 detail="One or more of the specified author IDs were not found"
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
-        image_url = await save_image(image) if image else None
+        images_path = MEDIA_ROOT / "books" / "images"
+        file_name, file_size = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
         book = Book(
             title=data.title,
             description=data.description,
             genre_id=data.genre_id,
             authors=found_authors,
-            image_url=image_url
+            image_url=f"/books/images/{file_name}"
         )
         self.db.add(book)
         await self.db.commit()

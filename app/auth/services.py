@@ -52,7 +52,7 @@ class AuthService:
             headers={"WWW-Authenticate": "Bearer"}
         )
         payload = decode_token(refresh_token, "refresh")
-        email: str | None = payload.get("email")
+        email: str | None = payload.get("sub")
         if not email:
             raise credentials_exception
         user = await self.user_service.get_user_by_email(email)

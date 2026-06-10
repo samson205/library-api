@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.schemas import BaseList
 from app.authors.schemas import AuthorShortRead
+from app.genres.schemas import GenreShortRead
 
 
 class BookCreate(BaseModel):
@@ -42,8 +43,9 @@ class BookRead(BaseModel):
     title: Annotated[str, Field(..., description="Название книги")]
     description: Annotated[str | None, Field(..., description="Описание книги")]
     rating: Annotated[float, Field(..., description="Оценка книги")]
-    genre_id: Annotated[int, Field(..., description="ID жанра")]
+    # genre_id: Annotated[int, Field(..., description="ID жанра")]
     image_url: Annotated[str | None, Field(..., description="URL файла с обложкой книги")]
+    genre: Annotated["GenreShortRead", Field(..., description="Жанр книги")]
     authors: Annotated[list[AuthorShortRead], Field(..., description="Авторы книги")]
 
     model_config = ConfigDict(from_attributes=True)

@@ -50,25 +50,38 @@ class BookService:
         files_path = STORAGE_ROOT / "books" / "files"
         file_name, file_size = await StorageService.save_file(file, files_path, MAX_BOOK_SIZE)
 
-        book = Book(
-            title=data.title,
-            description=data.description,
-            genre_id=data.genre_id,
-            authors=found_authors,
-            image_url=f"media/books/images/{image_name}"
-        )
-        self.db.add(book)
-        await self.db.flush()
+        try:
+            book = Book(
+                title=data.title,
+                description=data.description,
+                genre_id=data.genre_id,
+                authors=found_authors,
+                image_url=f"books/images/{image_name}"
+            )
+            self.db.add(book)
+            await self.db.flush()
 
-        book_file = BookFile(
-            book_id=book.id,
-            original_filename=file.filename,
-            file_path=f"storage/books/files/{file_name}",
-            file_size=file_size,
-            file_format=file_ext.lstrip(".")
-        )
-        self.db.add(book_file)
-        await self.db.commit()
+            book_file = BookFile(
+                book_id=book.id,
+                original_filename=file.filename,
+                file_path=f"books/files/{file_name}",
+                file_size=file_size,
+                file_format=file_ext.lstrip(".")
+            )
+            self.db.add(book_file)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            if image_name:
+                StorageService.remove_file(f"{MEDIA_ROOT / 'books' / 'images' / image_name}")
+            if file_name:
+                StorageService.remove_file(f"{STORAGE_ROOT / 'books' / 'files' / file_name}")
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create book"
+            )
+        
         new_book = await self.get_book_by_id(book.id)
         return new_book
 
@@ -77,6 +90,7 @@ class BookService:
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
+            .options(selectinload(Book.genre))
             .options(with_loader_criteria(Author, Author.is_active == True))
             .where(*filters)
             .order_by(Book.id)
@@ -95,6 +109,7 @@ class BookService:
             select(Book)
             .options(selectinload(Book.authors))
             .options(selectinload(Book.files))
+            .options(selectinload(Book.genre))
             .options(with_loader_criteria(Author, Author.is_active == True))
             .where(Book.id == book_id, Book.is_active == True)
         )

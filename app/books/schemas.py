@@ -27,6 +27,14 @@ class BookCreate(BaseModel):
             genre_id=genre_id,
             author_ids=author_ids
         )
+    
+
+class BookFileResponse(BaseModel):
+    id: Annotated[int, Field(...)]
+    file_format: Annotated[str, Field(...)]
+    file_size: Annotated[int, Field(...)]
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookRead(BaseModel):
@@ -39,6 +47,10 @@ class BookRead(BaseModel):
     authors: Annotated[list[AuthorShortRead], Field(..., description="Авторы книги")]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookResponse(BookRead):
+    files: Annotated[list["BookFileResponse"], Field(..., description="Форматы файлов")]
 
 
 class BookUpdate(BaseModel):

@@ -3,11 +3,11 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import MEDIA_ROOT, MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES
+from app.core.config import MEDIA_ROOT, STORAGE_ROOT, MAX_IMAGE_SIZE, MAX_BOOK_SIZE, ALLOWED_IMAGE_TYPES, ALLOWED_BOOK_EXTENSIONS
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.books.schemas import BookCreate, BookUpdate, BookFilters
-from app.books.models import Book
+from app.books.models import Book, BookFile
 from app.authors.services import AuthorService
 from app.authors.models import Author
 from app.genres.services import GenreService
@@ -23,12 +23,19 @@ class BookService:
         self.author_service = author_service
         self.genre_service = genre_service
 
-    async def create_book(self, data: BookCreate, image: UploadFile | None) -> Book:
+    async def create_book(self, data: BookCreate, file: UploadFile, image: UploadFile | None) -> Book:
         if image and image.content_type not in ALLOWED_IMAGE_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only JPG, PNG, WebP images are allowed"
             )
+        file_ext = StorageService.get_file_extension(file.filename)
+        if file_ext not in ALLOWED_BOOK_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .epub, .fb2, .pdf files are allowed"
+            )
+        
         found_authors = await self.author_service.get_authors_by_ids(data.author_ids)
         if len(found_authors) != len(data.author_ids):
             raise HTTPException(
@@ -36,16 +43,31 @@ class BookService:
                 detail="One or more of the specified author IDs were not found"
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
+
         images_path = MEDIA_ROOT / "books" / "images"
-        file_name, file_size = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
+
+        files_path = STORAGE_ROOT / "books" / "files"
+        file_name, file_size = await StorageService.save_file(file, files_path, MAX_BOOK_SIZE)
+
         book = Book(
             title=data.title,
             description=data.description,
             genre_id=data.genre_id,
             authors=found_authors,
-            image_url=f"/books/images/{file_name}"
+            image_url=f"media/books/images/{image_name}"
         )
         self.db.add(book)
+        await self.db.flush()
+
+        book_file = BookFile(
+            book_id=book.id,
+            original_filename=file.filename,
+            file_path=f"storage/books/files/{file_name}",
+            file_size=file_size,
+            file_format=file_ext.lstrip(".")
+        )
+        self.db.add(book_file)
         await self.db.commit()
         new_book = await self.get_book_by_id(book.id)
         return new_book
@@ -72,6 +94,7 @@ class BookService:
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
+            .options(selectinload(Book.files))
             .options(with_loader_criteria(Author, Author.is_active == True))
             .where(Book.id == book_id, Book.is_active == True)
         )

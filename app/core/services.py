@@ -13,7 +13,7 @@ class StorageService:
     @staticmethod
     async def save_file(file: UploadFile, folder: Path, max_size: int) -> tuple[str, int]:        
         folder.mkdir(parents=True, exist_ok=True)
-        extension = Path(file.filename or "").suffix.lower()
+        extension = StorageService.get_file_extension(filename=file.filename)
         filename = f"{uuid.uuid4()}{extension}"
         file_path = folder / filename
 
@@ -42,3 +42,7 @@ class StorageService:
         file_path = BASE_DIR / url.lstrip("/")
         if file_path.exists():
             file_path.unlink()
+
+    @staticmethod
+    def get_file_extension(filename: str | None) -> str:
+        return Path(filename or "").suffix.lower()

@@ -28,3 +28,17 @@ class Book(Base):
     authors: Mapped[list["Author"]] = relationship(back_populates="books", secondary=book_authors) # type: ignore
     reviews: Mapped[list["Review"]] = relationship("Review", uselist=True, back_populates="book") # type: ignore
     shelves: Mapped[list["Shelf"]] = relationship("Shelf", secondary=shelf_books, back_populates="books") # type: ignore
+    files: Mapped[list["BookFile"]] = relationship("BookFile", uselist=True, back_populates="book")
+
+
+class BookFile(Base):
+    __tablename__ = "book_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id", ondelete="CASCADE"), nullable=False)
+    original_filename: Mapped[str] = mapped_column(String, nullable=False)
+    file_path: Mapped[str] = mapped_column(String, nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    file_format: Mapped[str] = mapped_column(String(10), nullable=False)
+
+    book: Mapped["Book"] = relationship("Book", back_populates="files")

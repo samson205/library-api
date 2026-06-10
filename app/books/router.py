@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status, Depends, UploadFile, File
 
 from app.core.schemas import PaginationSchema
-from app.books.schemas import BookCreate, BookRead, BookUpdate, BookList, BookFilters
+from app.books.schemas import BookCreate, BookRead, BookUpdate, BookList, BookFilters, BookResponse
 from app.books.services import BookService
 from app.books.dependencies import get_book_service
 from app.users.models import User
@@ -25,17 +25,18 @@ async def get_books(
     }
 
 
-@router.post("/", response_model=BookRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 async def create_book(
     data: BookCreate = Depends(BookCreate.as_form),
+    book_file: UploadFile = File(),
     image: UploadFile | None = File(None),
     admin: User = Depends(get_current_admin),
     service: BookService = Depends(get_book_service)
 ):
-    return await service.create_book(data, image)
+    return await service.create_book(data, book_file, image)
 
 
-@router.get("/{book_id}", response_model=BookRead)
+@router.get("/{book_id}", response_model=BookResponse)
 async def get_book(
     book_id: int,
     service: BookService = Depends(get_book_service)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, Response
+from fastapi import APIRouter, status, Depends, UploadFile, File
 
 from app.authors.schemas import AuthorRead, AuthorCreate, AuthorUpdate
 from app.authors.services import AuthorService
@@ -18,11 +18,12 @@ async def get_all_authors(
 
 @router.post("/", response_model=AuthorRead, status_code=status.HTTP_201_CREATED)
 async def create_author(
-    data: AuthorCreate,
+    data: AuthorCreate = Depends(AuthorCreate.as_form),
+    image: UploadFile | None = File(None),
     admin: User = Depends(get_current_admin),
     service: AuthorService = Depends(get_author_service)
 ):
-    return await service.create_author(data)
+    return await service.create_author(data, image)
 
 
 @router.get("/{author_id}", response_model=AuthorRead)
@@ -33,7 +34,7 @@ async def get_author_by_id(
     return await service.get_author_by_id(author_id)
 
 
-@router.put("/{author_id}", response_model=AuthorRead)
+@router.patch("/{author_id}", response_model=AuthorRead)
 async def update_author(
     author_id: int,
     data: AuthorUpdate,
@@ -50,3 +51,22 @@ async def soft_delete_author(
     service: AuthorService = Depends(get_author_service)
 ):
     await service.soft_delete_author(author_id)
+
+
+@router.put("/{author_id}/image", response_model=AuthorRead)
+async def update_author_image(
+    author_id: int,
+    image: UploadFile = File(...),
+    admin: User = Depends(get_current_admin),
+    service: AuthorService = Depends(get_author_service)
+):
+    return await service.update_author_image(author_id, image)
+
+
+@router.delete("/{author_id}/image", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_author_image(
+    author_id: int,
+    admin: User = Depends(get_current_admin),
+    service: AuthorService = Depends(get_author_service)
+):
+    await service.delete_author_image(author_id)

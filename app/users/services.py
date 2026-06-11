@@ -21,12 +21,22 @@ class UserService:
                 detail="Email already registered"
             )
         
-        user = User(
-            email=data.email,
-            hashed_password=hash_password(data.password)
-        )
-        self.db.add(user)
-        await self.db.commit()
+        try:
+            user = User(
+                email=data.email,
+                hashed_password=hash_password(data.password)
+            )
+            self.db.add(user)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user"
+            )
+        
+        await self.db.refresh(user)
         return user
     
     async def get_user_by_email(self, email: str) -> User | None:

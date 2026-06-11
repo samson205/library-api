@@ -8,12 +8,15 @@ class GenreCreate(BaseModel):
     parent_id: Annotated[int | None, Field(default=None, description="ID родительского жанра")]
 
 
-class GenreRead(BaseModel):
+class GenreShortRead(BaseModel):
     id: Annotated[int, Field(..., description="ID жанра")]
     name: Annotated[str, Field(..., description="Название жанра")]
-    parent_id: Annotated[int | None, Field(..., description="ID родительского жанра")]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class GenreRead(GenreShortRead):
+    parent_id: Annotated[int | None, Field(..., description="ID родительского жанра")]
 
 
 class GenreUpdate(BaseModel):

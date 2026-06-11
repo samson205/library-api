@@ -222,5 +222,6 @@ __marimo__/
 # database
 *.db
 
-# media
+# media and storage
 media
+storage

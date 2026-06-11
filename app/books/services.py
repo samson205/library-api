@@ -1,11 +1,13 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import MEDIA_ROOT, STORAGE_ROOT, MAX_IMAGE_SIZE, MAX_BOOK_SIZE, ALLOWED_IMAGE_TYPES, ALLOWED_BOOK_EXTENSIONS
+from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.books.schemas import BookCreate, BookUpdate, BookFilters
-from app.books.models import Book
+from app.books.models import Book, BookFile
 from app.authors.services import AuthorService
 from app.authors.models import Author
 from app.genres.services import GenreService
@@ -21,22 +23,59 @@ class BookService:
         self.author_service = author_service
         self.genre_service = genre_service
 
-    async def create_book(self, data: BookCreate) -> Book:
-        found_authors = await self.author_service.get_authors_by_ids(data.authors_ids)
-        if len(found_authors) != len(data.authors_ids):
+    async def create_book(self, data: BookCreate, file: UploadFile, image: UploadFile | None) -> Book:
+        image_url = await self._save_book_image(image)
+
+        file_ext = StorageService.get_file_extension(file.filename)
+        if file_ext not in ALLOWED_BOOK_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .epub, .fb2, .pdf files are allowed"
+            )
+        
+        found_authors = await self.author_service.get_authors_by_ids(data.author_ids)
+        if len(found_authors) != len(data.author_ids):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="One or more of the specified author IDs were not found"
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
-        book = Book(
-            title=data.title,
-            description=data.description,
-            genre_id=data.genre_id,
-            authors=found_authors
-        )
-        self.db.add(book)
-        await self.db.commit()
+
+        files_path = STORAGE_ROOT / "books" / "files"
+        file_name, file_size = await StorageService.save_file(file, files_path, MAX_BOOK_SIZE)
+
+        try:
+            book = Book(
+                title=data.title,
+                description=data.description,
+                genre_id=data.genre_id,
+                authors=found_authors,
+                image_url=image_url
+            )
+            self.db.add(book)
+            await self.db.flush()
+
+            book_file = BookFile(
+                book_id=book.id,
+                original_filename=file.filename,
+                file_path=f"books/files/{file_name}",
+                file_size=file_size,
+                file_format=file_ext.lstrip(".")
+            )
+            self.db.add(book_file)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
+            if file_name:
+                StorageService.remove_file(files_path / file_name)
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create book"
+            )
+        
         new_book = await self.get_book_by_id(book.id)
         return new_book
 
@@ -45,6 +84,7 @@ class BookService:
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
+            .options(selectinload(Book.genre))
             .options(with_loader_criteria(Author, Author.is_active == True))
             .where(*filters)
             .order_by(Book.id)
@@ -62,6 +102,8 @@ class BookService:
         result = await self.db.scalars(
             select(Book)
             .options(selectinload(Book.authors))
+            .options(selectinload(Book.files))
+            .options(selectinload(Book.genre))
             .options(with_loader_criteria(Author, Author.is_active == True))
             .where(Book.id == book_id, Book.is_active == True)
         )
@@ -76,10 +118,10 @@ class BookService:
     async def update_book(self, data: BookUpdate, book_id: int) -> Book:
         upd_data = data.model_dump(exclude_unset=True)
         book = await self.get_book_by_id(book_id)
-        authors_ids = upd_data.pop("authors_ids", None)
-        if authors_ids is not None:
-            found_authors = await self.author_service.get_authors_by_ids(authors_ids)
-            if len(authors_ids) != len(found_authors):
+        author_ids = upd_data.pop("author_ids", None)
+        if author_ids is not None:
+            found_authors = await self.author_service.get_authors_by_ids(author_ids)
+            if len(author_ids) != len(found_authors):
                 raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="One or more of the specified author IDs were not found"
@@ -91,14 +133,88 @@ class BookService:
         for key, value in upd_data.items():
             setattr(book, key, value)
 
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update book"
+            )
+
         await self.db.refresh(book)
         return book
 
     async def soft_delete_book(self, book_id: int) -> None:
         book = await self.get_book_by_id(book_id)
         book.is_active = False
-        await self.db.commit()
+        try:
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to soft delete book"
+            )
+
+    async def update_book_image(self, book_id: int, image: UploadFile) -> Book:
+        image_url = await self._save_book_image(image)
+        book = await self.get_book_by_id(book_id)
+        old_image_url = book.image_url
+
+        try:
+            book.image_url = image_url
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update book image"
+            )
+        
+        if old_image_url:
+            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+        await self.db.refresh(book)
+        return book
+    
+    async def delete_book_image(self, book_id: int) -> None:
+        book = await self.get_book_by_id(book_id)
+        image_url = book.image_url
+        if not image_url:
+            return None
+        book.image_url = None
+
+        try:
+            await self.db.commit()
+            
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete book image"
+            )
+
+        if image_url:
+            StorageService.remove_file(MEDIA_ROOT / image_url)
+        return None
+
+    async def _save_book_image(self, image: UploadFile | None) -> str | None:
+        if not image:
+            return None
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
+        images_path = MEDIA_ROOT / "books" / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
+        image_url = f"books/images/{image_name}"
+        return image_url
 
     async def _get_count_books(self, filters: list) -> int:
         result = await self.db.scalar(

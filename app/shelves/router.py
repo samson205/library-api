@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, UploadFile, File
 
 from app.core.schemas import PaginationSchema
 from app.shelves.schemas import ShelfRead, ShelfReadBase, ShelfCreate, ShelfFilters, ShelfList
@@ -29,11 +29,12 @@ async def get_shelves(
 
 @router.post("/", response_model=ShelfReadBase, status_code=status.HTTP_201_CREATED)
 async def create_shelf(
-    data: ShelfCreate,
+    data: ShelfCreate = Depends(ShelfCreate.as_form),
+    image: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     service: ShelfService = Depends(get_shelf_service)
 ):
-    return await service.create_shelf(data, user.id)
+    return await service.create_shelf(data, user.id, image)
 
 
 @router.get("/{shelf_id}", response_model=ShelfRead)
@@ -44,6 +45,25 @@ async def get_shelf_by_id(
 ):
     user_id = user.id if user else None
     return await service.get_shelf_by_id(shelf_id, user_id)
+
+
+@router.put("/{shelf_id}/image", response_model=ShelfRead)
+async def update_shelf_image(
+    shelf_id: int,
+    image: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    service: ShelfService = Depends(get_shelf_service)
+):
+    return await service.update_shelf_image(shelf_id, user, image)
+
+
+@router.delete("/{shelf_id}/image", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_shelf_image(
+    shelf_id: int,
+    user: User = Depends(get_current_user),
+    service: ShelfService = Depends(get_shelf_service)
+):
+    await service.delete_shelf_image(shelf_id, user)
 
 
 @router.post("/{shelf_id}/books/{book_id}", status_code=status.HTTP_201_CREATED)

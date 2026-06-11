@@ -44,7 +44,7 @@ async def get_book(
     return await service.get_book_by_id(book_id)
 
 
-@router.put("/{book_id}", response_model=BookRead)
+@router.patch("/{book_id}", response_model=BookRead)
 async def update_book(
     book_id: int,
     data: BookUpdate,
@@ -61,3 +61,22 @@ async def soft_delete_book(
     service: BookService = Depends(get_book_service)
 ):
     await service.soft_delete_book(book_id)
+
+
+@router.put("/{book_id}/image", response_model=BookRead)
+async def update_book_image(
+    book_id: int,
+    image: UploadFile = File(...),
+    admin: User = Depends(get_current_admin),
+    service: BookService = Depends(get_book_service)
+):
+    return await service.update_book_image(book_id, image)
+
+
+@router.delete("/{book_id}/image", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_book_image(
+    book_id: int,
+    admin: User = Depends(get_current_admin),
+    service: BookService = Depends(get_book_service)
+):
+    await service.delete_book_image(book_id)

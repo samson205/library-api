@@ -32,7 +32,7 @@ class AuthorService:
         except Exception:
             await self.db.rollback()
             if image_name:
-                StorageService.remove_file(f"{images_path / image_name}")
+                StorageService.remove_file(images_path / image_name)
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

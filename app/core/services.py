@@ -36,10 +36,10 @@ class StorageService:
         return filename, total_size
     
     @staticmethod
-    def remove_file(url: str | None) -> None:
+    def remove_file(url: Path | None) -> None:
         if not url:
             return
-        file_path = BASE_DIR / url.lstrip("/")
+        file_path = BASE_DIR / url
         if file_path.exists():
             file_path.unlink()
 

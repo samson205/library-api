@@ -44,9 +44,7 @@ class BookService:
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
 
-        images_path = MEDIA_ROOT / "books" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
-        image_url = f"books/images/{image_name}" if image_name else None
+        image_url = await self._save_book_image(image)
 
         files_path = STORAGE_ROOT / "books" / "files"
         file_name, file_size = await StorageService.save_file(file, files_path, MAX_BOOK_SIZE)
@@ -73,10 +71,10 @@ class BookService:
             await self.db.commit()
         except Exception:
             await self.db.rollback()
-            if image_name:
-                StorageService.remove_file(f"{images_path / image_name}")
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
             if file_name:
-                StorageService.remove_file(f"{files_path / file_name}")
+                StorageService.remove_file(files_path / file_name)
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -125,10 +123,10 @@ class BookService:
     async def update_book(self, data: BookUpdate, book_id: int) -> Book:
         upd_data = data.model_dump(exclude_unset=True)
         book = await self.get_book_by_id(book_id)
-        authors_ids = upd_data.pop("authors_ids", None)
-        if authors_ids is not None:
-            found_authors = await self.author_service.get_authors_by_ids(authors_ids)
-            if len(authors_ids) != len(found_authors):
+        author_ids = upd_data.pop("author_ids", None)
+        if author_ids is not None:
+            found_authors = await self.author_service.get_authors_by_ids(author_ids)
+            if len(author_ids) != len(found_authors):
                 raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="One or more of the specified author IDs were not found"
@@ -140,7 +138,16 @@ class BookService:
         for key, value in upd_data.items():
             setattr(book, key, value)
 
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update book"
+            )
+
         await self.db.refresh(book)
         return book
 
@@ -148,6 +155,62 @@ class BookService:
         book = await self.get_book_by_id(book_id)
         book.is_active = False
         await self.db.commit()
+
+    async def update_book_image(self, book_id: int, image: UploadFile) -> Book:
+        book = await self.get_book_by_id(book_id)
+
+        old_image_url = book.image_url
+        image_url = await self._save_book_image(image)
+
+        try:
+            if image_url:
+                book.image_url = image_url
+
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
+
+            raise HTTPException(
+                
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update book image"
+            )
+        
+        if image_url and old_image_url:
+            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+        
+        await self.db.refresh(book)
+        return book
+    
+    async def delete_book_image(self, book_id: int) -> None:
+        book = await self.get_book_by_id(book_id)
+        if not book.image_url:
+            return None
+        image_url = book.image_url
+        book.image_url = None
+
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete book image"
+            )
+
+        if image_url:
+            StorageService.remove_file(MEDIA_ROOT / image_url)
+        return None
+        
+
+    async def _save_book_image(self, image: UploadFile | None) -> str | None:
+        images_path = MEDIA_ROOT / "books" / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
+        image_url = f"books/images/{image_name}" if image_name else None
+        return image_url
 
     async def _get_count_books(self, filters: list) -> int:
         result = await self.db.scalar(

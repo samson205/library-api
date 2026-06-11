@@ -163,9 +163,7 @@ class BookService:
         image_url = await self._save_book_image(image)
 
         try:
-            if image_url:
-                book.image_url = image_url
-
+            book.image_url = image_url
             await self.db.commit()
         except Exception:
             await self.db.rollback()
@@ -179,7 +177,7 @@ class BookService:
                 detail="Failed to update book image"
             )
         
-        if image_url and old_image_url:
+        if old_image_url:
             StorageService.remove_file(MEDIA_ROOT / old_image_url)
         
         await self.db.refresh(book)
@@ -207,9 +205,11 @@ class BookService:
         
 
     async def _save_book_image(self, image: UploadFile | None) -> str | None:
+        if not image:
+            return None
         images_path = MEDIA_ROOT / "books" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
-        image_url = f"books/images/{image_name}" if image_name else None
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
+        image_url = f"books/images/{image_name}"
         return image_url
 
     async def _get_count_books(self, filters: list) -> int:

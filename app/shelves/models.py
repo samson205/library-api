@@ -20,7 +20,7 @@ class Shelf(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     is_private: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    image_url: Mapped[str | None] = mapped_column(String, nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship( # type: ignore

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE, MEDIA_ROOT
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
+from app.users.models import User
 from app.shelves.schemas import ShelfCreate, ShelfFilters
 from app.shelves.models import Shelf
 from app.books.models import Book
@@ -29,9 +30,7 @@ class ShelfService:
                 detail="Only JPG, PNG, WebP images are allowed"
             )
         
-        images_path = MEDIA_ROOT / "shelves" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
-        image_url = f"shelves/images/{image_name}" if image_name else None
+        image_url = await self._save_shelf_image(image)
 
         try:
             shelf = Shelf(**data.model_dump(), user_id=user_id, image_url=image_url)
@@ -40,8 +39,8 @@ class ShelfService:
         except Exception:
             await self.db.rollback()
 
-            if image_name:
-                StorageService.remove_file(images_path / image_name)
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -111,6 +110,69 @@ class ShelfService:
         
         shelf.books.append(book)
         await self.db.commit()
+
+    async def update_shelf_image(self, shelf_id: int, user: User, image: UploadFile) -> Shelf:
+        shelf = await self.get_shelf_by_id(shelf_id, user.id)
+        if user.id != shelf.user_id and user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can change the image of only your own shelf"
+            )
+        
+        old_image_url = shelf.image_url
+        image_url = await self._save_shelf_image(image)
+
+        try:
+            shelf.image_url = image_url
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update shelf image"
+            )
+        
+        if old_image_url:
+            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+
+        await self.db.refresh(shelf)
+        return shelf
+    
+    async def delete_shelf_image(self, shelf_id: int, user: User) -> None:
+        shelf = await self.get_shelf_by_id(shelf_id, user.id)
+        if user.id != shelf.user_id and user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can delete the image of only your own shelf"
+            )
+        
+        image_url = shelf.image_url
+        shelf.image_url = None
+
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete shelf image"
+            )
+        
+        if image_url:
+            StorageService.remove_file(MEDIA_ROOT / image_url)
+        return None
+
+    async def _save_shelf_image(self, image: UploadFile | None) -> str | None:
+        if not image:
+            return None
+        images_path = MEDIA_ROOT / "shelves" / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
+        image_url = f"shelves/images/{image_name}"
+        return image_url
     
     async def _get_count_shelves(self, filters: list) -> int:
         result = await self.db.scalar(

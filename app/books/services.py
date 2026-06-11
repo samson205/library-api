@@ -3,7 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import MEDIA_ROOT, STORAGE_ROOT, MAX_IMAGE_SIZE, MAX_BOOK_SIZE, ALLOWED_IMAGE_TYPES, ALLOWED_BOOK_EXTENSIONS
+from app.core.config import MEDIA_ROOT, STORAGE_ROOT, MAX_BOOK_SIZE, ALLOWED_BOOK_EXTENSIONS
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.books.schemas import BookCreate, BookUpdate, BookFilters
@@ -24,7 +24,7 @@ class BookService:
         self.genre_service = genre_service
 
     async def create_book(self, data: BookCreate, file: UploadFile, image: UploadFile | None) -> Book:
-        image_url = await self._save_book_image(image)
+        image_url = await StorageService.save_image(image, "books")
 
         file_ext = StorageService.get_file_extension(file.filename)
         if file_ext not in ALLOWED_BOOK_EXTENSIONS:
@@ -160,7 +160,7 @@ class BookService:
             )
 
     async def update_book_image(self, book_id: int, image: UploadFile) -> Book:
-        image_url = await self._save_book_image(image)
+        image_url = await StorageService.save_image(image, "books")
         book = await self.get_book_by_id(book_id)
         old_image_url = book.image_url
 
@@ -203,19 +203,6 @@ class BookService:
             StorageService.remove_file(MEDIA_ROOT / image_url)
         return None
 
-    async def _save_book_image(self, image: UploadFile | None) -> str | None:
-        if not image:
-            return None
-        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
-            )
-        images_path = MEDIA_ROOT / "books" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
-        image_url = f"books/images/{image_name}"
-        return image_url
-
     async def _get_count_books(self, filters: list) -> int:
         result = await self.db.scalar(
             select(func.count(Book.id))
@@ -239,3 +226,4 @@ class BookService:
             )
 
         return filters
+    

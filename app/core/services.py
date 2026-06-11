@@ -4,7 +4,7 @@ from pathlib import Path
 import aiofiles
 from fastapi import UploadFile, HTTPException, status
 
-from app.core.config import BASE_DIR
+from app.core.config import BASE_DIR, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE, MEDIA_ROOT
 
 
 class StorageService:
@@ -36,12 +36,26 @@ class StorageService:
         return filename, total_size
     
     @staticmethod
-    def remove_file(url: Path | None) -> None:
-        if not url:
+    def remove_file(path: Path | None) -> None:
+        if not path:
             return
-        file_path = BASE_DIR / url
+        file_path = BASE_DIR / path
         if file_path.exists():
             file_path.unlink()
+
+    @staticmethod
+    async def save_image(image: UploadFile | None, sub_folder: str) -> str | None:
+        if not image:
+            return None
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
+        images_path = MEDIA_ROOT / sub_folder / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
+        image_url = f"{sub_folder}/images/{image_name}"
+        return image_url
 
     @staticmethod
     def get_file_extension(filename: str | None) -> str:

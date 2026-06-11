@@ -2,7 +2,7 @@ from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import ALLOWED_IMAGE_TYPES, MEDIA_ROOT, MAX_IMAGE_SIZE
+from app.core.config import MEDIA_ROOT
 from app.core.services import StorageService
 from app.authors.models import Author
 from app.authors.schemas import AuthorCreate, AuthorUpdate
@@ -15,7 +15,7 @@ class AuthorService:
         self.db = db
 
     async def create_author(self, data: AuthorCreate, image: UploadFile | None) -> Author:
-        image_url = await self._save_author_image(image)
+        image_url = await StorageService.save_image(image, "authors")
 
         try:
             author = Author(**data.model_dump(), image_url=image_url)
@@ -69,7 +69,7 @@ class AuthorService:
         await self.db.commit()
 
     async def update_author_image(self, author_id: int, image: UploadFile) -> Author:
-        image_url = await self._save_author_image(image)
+        image_url = await StorageService.save_image(image, "authors")
         author = await self.get_author_by_id(author_id)
         old_image_url = author.image_url
 
@@ -111,17 +111,4 @@ class AuthorService:
         if image_url:
             StorageService.remove_file(MEDIA_ROOT / image_url)
         return None
-        
-    async def _save_author_image(self, image: UploadFile | None) -> str | None:
-        if not image:
-            return None
-        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
-            )
-        images_path = MEDIA_ROOT / "authors" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
-        image_url = f"authors/images/{image_name}"
-        return image_url
     

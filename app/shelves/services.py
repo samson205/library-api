@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE, MEDIA_ROOT
+from app.core.config import MEDIA_ROOT
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.users.models import User
@@ -24,7 +24,7 @@ class ShelfService:
         self.book_service = book_service
 
     async def create_shelf(self, data: ShelfCreate, user_id: int, image: UploadFile | None) -> Shelf:
-        image_url = await self._save_shelf_image(image)
+        image_url = await StorageService.save_image(image, "shelves")
 
         try:
             shelf = Shelf(**data.model_dump(), user_id=user_id, image_url=image_url)
@@ -106,7 +106,7 @@ class ShelfService:
         await self.db.commit()
 
     async def update_shelf_image(self, shelf_id: int, user: User, image: UploadFile) -> Shelf:
-        image_url = await self._save_shelf_image(image)
+        image_url = await StorageService.save_image(image, "shelves")
         shelf = await self.get_shelf_by_id(shelf_id, user.id)
         if user.id != shelf.user_id and user.role != "admin":
             raise HTTPException(
@@ -158,19 +158,6 @@ class ShelfService:
         if image_url:
             StorageService.remove_file(MEDIA_ROOT / image_url)
         return None
-
-    async def _save_shelf_image(self, image: UploadFile | None) -> str | None:
-        if not image:
-            return None
-        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
-            )
-        images_path = MEDIA_ROOT / "shelves" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
-        image_url = f"shelves/images/{image_name}"
-        return image_url
     
     async def _get_count_shelves(self, filters: list) -> int:
         result = await self.db.scalar(

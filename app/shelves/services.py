@@ -24,12 +24,6 @@ class ShelfService:
         self.book_service = book_service
 
     async def create_shelf(self, data: ShelfCreate, user_id: int, image: UploadFile | None) -> Shelf:
-        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
-            )
-        
         image_url = await self._save_shelf_image(image)
 
         try:
@@ -112,6 +106,7 @@ class ShelfService:
         await self.db.commit()
 
     async def update_shelf_image(self, shelf_id: int, user: User, image: UploadFile) -> Shelf:
+        image_url = await self._save_shelf_image(image)
         shelf = await self.get_shelf_by_id(shelf_id, user.id)
         if user.id != shelf.user_id and user.role != "admin":
             raise HTTPException(
@@ -120,17 +115,15 @@ class ShelfService:
             )
         
         old_image_url = shelf.image_url
-        image_url = await self._save_shelf_image(image)
 
         try:
             shelf.image_url = image_url
             await self.db.commit()
+
         except Exception:
             await self.db.rollback()
-
             if image_url:
                 StorageService.remove_file(MEDIA_ROOT / image_url)
-
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update shelf image"
@@ -169,6 +162,11 @@ class ShelfService:
     async def _save_shelf_image(self, image: UploadFile | None) -> str | None:
         if not image:
             return None
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
         images_path = MEDIA_ROOT / "shelves" / "images"
         image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
         image_url = f"shelves/images/{image_name}"

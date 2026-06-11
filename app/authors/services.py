@@ -15,25 +15,17 @@ class AuthorService:
         self.db = db
 
     async def create_author(self, data: AuthorCreate, image: UploadFile | None) -> Author:
-        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
-            )
-        
-        images_path = MEDIA_ROOT / "authors" / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE) if image else (None, None)
-        image_url = f"authors/images/{image_name}" if image_name else None
+        image_url = await self._save_author_image(image)
 
         try:
             author = Author(**data.model_dump(), image_url=image_url)
             self.db.add(author)
             await self.db.commit()
+            
         except Exception:
             await self.db.rollback()
-            if image_name:
-                StorageService.remove_file(images_path / image_name)
-
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create author"
@@ -75,4 +67,61 @@ class AuthorService:
         author = await self.get_author_by_id(author_id)
         author.is_active = False
         await self.db.commit()
+
+    async def update_author_image(self, author_id: int, image: UploadFile) -> Author:
+        image_url = await self._save_author_image(image)
+        author = await self.get_author_by_id(author_id)
+        old_image_url = author.image_url
+
+        try:
+            author.image_url = image_url
+            await self.db.commit()
         
+        except Exception:
+            await self.db.rollback()
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update author image"
+            )
+        
+        if old_image_url:
+            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+        await self.db.refresh(author)
+        return author
+    
+    async def delete_author_image(self, author_id: int) -> None:
+        author = await self.get_author_by_id(author_id)
+        image_url = author.image_url
+        if not image_url:
+            return None
+        author.image_url = None
+
+        try:
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete author image"
+            )
+        
+        if image_url:
+            StorageService.remove_file(MEDIA_ROOT / image_url)
+        return None
+        
+    async def _save_author_image(self, image: UploadFile | None) -> str | None:
+        if not image:
+            return None
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
+        images_path = MEDIA_ROOT / "authors" / "images"
+        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
+        image_url = f"authors/images/{image_name}"
+        return image_url
+    

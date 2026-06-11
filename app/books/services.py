@@ -24,11 +24,8 @@ class BookService:
         self.genre_service = genre_service
 
     async def create_book(self, data: BookCreate, file: UploadFile, image: UploadFile | None) -> Book:
-        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
-            )
+        image_url = await self._save_book_image(image)
+
         file_ext = StorageService.get_file_extension(file.filename)
         if file_ext not in ALLOWED_BOOK_EXTENSIONS:
             raise HTTPException(
@@ -43,8 +40,6 @@ class BookService:
                 detail="One or more of the specified author IDs were not found"
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
-
-        image_url = await self._save_book_image(image)
 
         files_path = STORAGE_ROOT / "books" / "files"
         file_name, file_size = await StorageService.save_file(file, files_path, MAX_BOOK_SIZE)
@@ -154,44 +149,49 @@ class BookService:
     async def soft_delete_book(self, book_id: int) -> None:
         book = await self.get_book_by_id(book_id)
         book.is_active = False
-        await self.db.commit()
+        try:
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to soft delete book"
+            )
 
     async def update_book_image(self, book_id: int, image: UploadFile) -> Book:
-        book = await self.get_book_by_id(book_id)
-
-        old_image_url = book.image_url
         image_url = await self._save_book_image(image)
+        book = await self.get_book_by_id(book_id)
+        old_image_url = book.image_url
 
         try:
             book.image_url = image_url
             await self.db.commit()
+
         except Exception:
             await self.db.rollback()
-
             if image_url:
                 StorageService.remove_file(MEDIA_ROOT / image_url)
-
             raise HTTPException(
-                
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update book image"
             )
         
         if old_image_url:
             StorageService.remove_file(MEDIA_ROOT / old_image_url)
-        
         await self.db.refresh(book)
         return book
     
     async def delete_book_image(self, book_id: int) -> None:
         book = await self.get_book_by_id(book_id)
-        if not book.image_url:
-            return None
         image_url = book.image_url
+        if not image_url:
+            return None
         book.image_url = None
 
         try:
             await self.db.commit()
+            
         except Exception:
             await self.db.rollback()
             raise HTTPException(
@@ -202,11 +202,15 @@ class BookService:
         if image_url:
             StorageService.remove_file(MEDIA_ROOT / image_url)
         return None
-        
 
     async def _save_book_image(self, image: UploadFile | None) -> str | None:
         if not image:
             return None
+        if image and image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only JPG, PNG, WebP images are allowed"
+            )
         images_path = MEDIA_ROOT / "books" / "images"
         image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
         image_url = f"books/images/{image_name}"

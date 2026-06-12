@@ -32,3 +32,7 @@ class Shelf(Base):
         secondary=shelf_books,
         back_populates="shelves"
     )
+
+    @property
+    def books_count(self) -> int:
+        return len(self.books)

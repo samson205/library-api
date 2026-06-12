@@ -5,7 +5,7 @@ from fastapi import Form
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.schemas import BaseList
-from app.books.schemas import BookRead
+from app.books.schemas import BookShortRead
 
 
 class ShelfCreate(BaseModel):
@@ -31,12 +31,13 @@ class ShelfReadBase(BaseModel):
     user_id: Annotated[int, Field(..., description="ID пользователя")]
     image_url: Annotated[str | None, Field(..., description="URL изображения полки")]
     created_at: Annotated[datetime, Field(..., description="Дата и время создания полки")]
+    books_count: Annotated[int, Field(..., description="Кол-во книг на полке")]
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ShelfRead(ShelfReadBase):
-    books: Annotated[list["BookRead"], Field(..., description="Книги на полке")]
+    books: Annotated[list["BookShortRead"], Field(..., description="Книги на полке")]
 
 
 class ShelfList(BaseList):

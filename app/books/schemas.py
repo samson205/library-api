@@ -38,12 +38,22 @@ class BookFileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class BookShortRead(BaseModel):
+    id: Annotated[int, Field(..., description="ID книги")]
+    title: Annotated[str, Field(..., description="Название книги")]
+    rating: Annotated[float, Field(..., description="Оценка книги")]
+    image_url: Annotated[str | None, Field(..., description="URL файла с обложкой книги")]
+    genre: Annotated["GenreShortRead", Field(..., description="Жанр книги")]
+    authors: Annotated[list[AuthorShortRead], Field(..., description="Авторы книги")]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class BookRead(BaseModel):
     id: Annotated[int, Field(..., description="ID книги")]
     title: Annotated[str, Field(..., description="Название книги")]
     description: Annotated[str | None, Field(..., description="Описание книги")]
     rating: Annotated[float, Field(..., description="Оценка книги")]
-    # genre_id: Annotated[int, Field(..., description="ID жанра")]
     image_url: Annotated[str | None, Field(..., description="URL файла с обложкой книги")]
     genre: Annotated["GenreShortRead", Field(..., description="Жанр книги")]
     authors: Annotated[list[AuthorShortRead], Field(..., description="Авторы книги")]

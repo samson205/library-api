@@ -8,8 +8,8 @@ from app.core.config import MEDIA_ROOT
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.users.models import User
-from app.shelves.schemas import ShelfCreate, ShelfFilters
-from app.shelves.models import Shelf
+from app.shelves.schemas import ShelfCreate, ShelfFilters, ShelfReadBase
+from app.shelves.models import Shelf, shelf_books
 from app.books.models import Book
 from app.books.services import BookService
 from app.authors.models import Author
@@ -46,14 +46,34 @@ class ShelfService:
     
     async def get_shelves(self, current_user_id: int | None, pagination: PaginationSchema, filters_schema: ShelfFilters) -> dict:
         filters = self._build_filters(current_user_id, **filters_schema.model_dump(exclude_none=True, exclude_unset=True))
-        result = await self.db.scalars(
-            select(Shelf)
+        stmt = (
+            select(
+                Shelf,
+                func.count(shelf_books.c.book_id).label("books_count")
+            )
+            .outerjoin(
+                shelf_books,
+                Shelf.id == shelf_books.c.shelf_id
+            )
             .where(*filters)
+            .group_by(Shelf.id)
             .order_by(Shelf.id)
             .offset((pagination.page - 1) * pagination.page_size)
             .limit(pagination.page_size)
         )
-        items = list(result.all())
+        rows = (await self.db.execute(stmt)).all()
+        items = [
+            ShelfReadBase(
+                id=shelf.id,
+                title=shelf.title,
+                is_private=shelf.is_private,
+                user_id=shelf.user_id,
+                image_url=shelf.image_url,
+                created_at=shelf.created_at,
+                books_count=books_count
+            )
+            for shelf, books_count in rows
+        ]
         total = await self._get_count_shelves(filters)
         return {
             "total": total,
@@ -63,7 +83,11 @@ class ShelfService:
     async def get_shelf_by_id(self, shelf_id: int, user_id: int | None) -> Shelf:
         result = await self.db.scalars(
             select(Shelf)
-            .options(selectinload(Shelf.books).selectinload(Book.authors))
+            .options(selectinload(Shelf.books).options(
+                    selectinload(Book.authors),
+                    selectinload(Book.genre)
+                )
+            )
             .options(with_loader_criteria(Book, Book.is_active == True))
             .options(with_loader_criteria(Author, Author.is_active == True))
             .where(

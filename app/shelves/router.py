@@ -75,3 +75,14 @@ async def add_book_to_shelf(
 ):
     await service.add_book_to_shelf(shelf_id, book_id, user.id)
     return {"detail": "The book has been successfully added to the shelf"}
+
+
+@router.delete("/{shelf_id}/books/{book_id}")
+async def delete_book_from_shelf(
+    shelf_id: int,
+    book_id: int,
+    user: User = Depends(get_current_user),
+    service: ShelfService = Depends(get_shelf_service)
+):
+    await service.delete_book_from_shelf(shelf_id, book_id, user.id)
+    return {"detail": "The book has been successfully deleted from the shelf"}

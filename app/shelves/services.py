@@ -129,6 +129,34 @@ class ShelfService:
         shelf.books.append(book)
         await self.db.commit()
 
+    async def delete_book_from_shelf(self, shelf_id: int, book_id: int, user_id: int) -> None:
+        result = await self.db.scalars(
+            select(Shelf)
+            .options(selectinload(Shelf.books))
+            .where(Shelf.id == shelf_id, Shelf.user_id == user_id)
+        )
+        shelf = result.first()
+        if not shelf:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shelf not found or you don't have access"
+            )
+        book = await self.book_service.get_book_by_id(book_id)
+        
+        try:
+            shelf.books.remove(book)
+        except ValueError:
+            return
+
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete book from shelf"
+            )
+
     async def update_shelf_image(self, shelf_id: int, user: User, image: UploadFile) -> Shelf:
         image_url = await StorageService.save_image(image, "shelves")
         shelf = await self.get_shelf_by_id(shelf_id, user.id)

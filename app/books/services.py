@@ -84,10 +84,14 @@ class BookService:
         filters = self._build_filters(**filters_schema.model_dump(exclude_unset=True, exclude_none=True))
         result = await self.db.scalars(
             select(Book)
-            .options(selectinload(Book.authors))
-            .options(selectinload(Book.genre))
-            .options(with_loader_criteria(Author, Author.is_active == True))
-            .options(with_loader_criteria(Genre, Genre.is_active == True))
+            .options(
+                selectinload(Book.authors),
+                selectinload(Book.genre)
+            )
+            .options(
+                with_loader_criteria(Author, Author.is_active == True),
+                with_loader_criteria(Genre, Genre.is_active == True)
+            )
             .where(*filters)
             .order_by(Book.id)
             .offset((pagination.page - 1) * pagination.page_size)
@@ -107,8 +111,10 @@ class BookService:
                 selectinload(Book.authors),
                 selectinload(Book.genre)
             )
-            .options(with_loader_criteria(Author, Author.is_active == True))
-            .options(with_loader_criteria(Genre, Genre.is_active == True))
+            .options(
+                with_loader_criteria(Author, Author.is_active == True),
+                with_loader_criteria(Genre, Genre.is_active == True)
+            )
             .where(Book.id == book_id, Book.is_active == True)
         )
         if load_files:

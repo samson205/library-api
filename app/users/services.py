@@ -1,10 +1,12 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.users.schemas import UserCreate
 from app.users.models import User
 from app.core.security import hash_password
+from app.core.services import StorageService
+from app.core.config import MEDIA_ROOT
 
 
 class UserService:
@@ -42,3 +44,58 @@ class UserService:
             select(User).where(User.email == email, User.is_active == True)
         )
         return result.first()
+    
+    async def get_user_by_id(self, user_id: int) -> User:
+        result = await self.db.scalars(
+            select(User).where(User.id == user_id, User.is_active == True)
+        )
+        user = result.first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return user
+    
+    async def load_user_avatar(self, user_id: int, image: UploadFile) -> User:
+        image_url = await StorageService.save_image(image, "users")
+        user = await self.get_user_by_id(user_id)
+        old_image_url = user.image_url
+
+        try:
+            user.image_url = image_url
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            if image_url:
+                StorageService.remove_file(MEDIA_ROOT / image_url)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to load user avatar"
+            )
+        
+        if old_image_url:
+            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+
+        await self.db.refresh(user)
+        return user
+
+    async def delete_user_avatar(self, user_id: int) -> None:
+        user = await self.get_user_by_id(user_id)
+        image_url = user.image_url
+        user.image_url = None
+
+        try:
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete user avatar"
+            )
+        
+        if image_url:
+            StorageService.remove_file(MEDIA_ROOT / image_url)
+        return None

@@ -89,8 +89,10 @@ class ShelfService:
                     selectinload(Book.authors), selectinload(Book.genre)
                 )
             )
-            .options(with_loader_criteria(Book, Book.is_active == True))
-            .options(with_loader_criteria(Author, Author.is_active == True))
+            .options(
+                with_loader_criteria(Book, Book.is_active == True),
+                with_loader_criteria(Author, Author.is_active == True)
+            )
             .where(
                 Shelf.id == shelf_id,
                 or_(Shelf.is_private == False, Shelf.user_id == user_id),

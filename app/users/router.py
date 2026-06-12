@@ -17,7 +17,7 @@ async def get_me(user: User = Depends(get_current_user)):
 async def load_user_avatar(
     user: User = Depends(get_current_user),
     image: UploadFile = File(...),
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
 ):
     return await service.load_user_avatar(user.id, image)
 
@@ -25,7 +25,6 @@ async def load_user_avatar(
 @router.delete("/me/image", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_avatar(
     user: User = Depends(get_current_user),
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
 ):
     await service.delete_user_avatar(user.id)
-    

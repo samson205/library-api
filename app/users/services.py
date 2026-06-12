@@ -44,7 +44,7 @@ class UserService:
             select(User).where(User.email == email, User.is_active == True)
         )
         return result.first()
-    
+
     async def get_user_by_id(self, user_id: int) -> User:
         result = await self.db.scalars(
             select(User).where(User.id == user_id, User.is_active == True)
@@ -52,11 +52,10 @@ class UserService:
         user = result.first()
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
         return user
-    
+
     async def load_user_avatar(self, user_id: int, image: UploadFile) -> User:
         image_url = await StorageService.save_image(image, "users")
         user = await self.get_user_by_id(user_id)
@@ -72,9 +71,9 @@ class UserService:
                 StorageService.remove_file(MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to load user avatar"
+                detail="Failed to load user avatar",
             )
-        
+
         if old_image_url:
             StorageService.remove_file(MEDIA_ROOT / old_image_url)
 
@@ -93,9 +92,9 @@ class UserService:
             await self.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to delete user avatar"
+                detail="Failed to delete user avatar",
             )
-        
+
         if image_url:
             StorageService.remove_file(MEDIA_ROOT / image_url)
         return None

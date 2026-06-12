@@ -10,6 +10,6 @@ from app.books.dependencies import get_book_service
 
 async def get_shelf_service(
     db: AsyncSession = Depends(get_db),
-    book_service: BookService = Depends(get_book_service)
+    book_service: BookService = Depends(get_book_service),
 ) -> ShelfService:
     return ShelfService(db, book_service)

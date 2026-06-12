@@ -5,7 +5,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class GenreCreate(BaseModel):
     name: Annotated[str, Field(..., description="Название жанра")]
-    parent_id: Annotated[int | None, Field(default=None, description="ID родительского жанра")]
+    parent_id: Annotated[
+        int | None, Field(default=None, description="ID родительского жанра")
+    ]
 
 
 class GenreShortRead(BaseModel):
@@ -21,4 +23,6 @@ class GenreRead(GenreShortRead):
 
 class GenreUpdate(BaseModel):
     name: Annotated[str | None, Field(None, description="Новое название жанра")]
-    parent_id: Annotated[int | None, Field(None, description="Новый ID родительского жанра")]
+    parent_id: Annotated[
+        int | None, Field(None, description="Новый ID родительского жанра")
+    ]

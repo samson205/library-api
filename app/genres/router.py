@@ -10,9 +10,7 @@ router = APIRouter(prefix="/genres", tags=["genres"])
 
 
 @router.get("/", response_model=list[GenreRead])
-async def get_all_genres(
-    service: GenreService = Depends(get_genre_service)
-): 
+async def get_all_genres(service: GenreService = Depends(get_genre_service)):
     return await service.get_all_genres()
 
 
@@ -20,15 +18,14 @@ async def get_all_genres(
 async def create_genre(
     data: GenreCreate,
     admin: User = Depends(get_current_admin),
-    service: GenreService = Depends(get_genre_service)
+    service: GenreService = Depends(get_genre_service),
 ):
     return await service.create_genre(data)
 
 
 @router.get("/{genre_id}", response_model=GenreRead)
 async def get_genre_by_id(
-    genre_id: int,
-    service: GenreService = Depends(get_genre_service)
+    genre_id: int, service: GenreService = Depends(get_genre_service)
 ):
     return await service.get_genre_by_id(genre_id)
 
@@ -38,7 +35,7 @@ async def update_genre(
     genre_id: int,
     data: GenreUpdate,
     admin: User = Depends(get_current_admin),
-    service: GenreService = Depends(get_genre_service)
+    service: GenreService = Depends(get_genre_service),
 ):
     return await service.update_genre(data, genre_id)
 
@@ -47,6 +44,6 @@ async def update_genre(
 async def soft_delete_genre(
     genre_id: int,
     admin: User = Depends(get_current_admin),
-    service: GenreService = Depends(get_genre_service)
+    service: GenreService = Depends(get_genre_service),
 ):
     await service.soft_delete_genre(genre_id)

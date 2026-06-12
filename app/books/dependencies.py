@@ -12,6 +12,6 @@ from app.core.database import get_db
 async def get_book_service(
     db: AsyncSession = Depends(get_db),
     author_service: AuthorService = Depends(get_author_service),
-    genre_service: GenreService = Depends(get_genre_service)
+    genre_service: GenreService = Depends(get_genre_service),
 ) -> BookService:
     return BookService(db, author_service, genre_service)

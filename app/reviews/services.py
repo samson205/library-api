@@ -20,14 +20,16 @@ class ReviewService:
     async def create_review(self, data: ReviewCreate, user_id: int) -> Review:
         book = await self.book_service.get_book_by_id(data.book_id)
         result = await self.db.scalars(
-            select(Review).where(Review.user_id == user_id, Review.book_id == data.book_id)
+            select(Review).where(
+                Review.user_id == user_id, Review.book_id == data.book_id
+            )
         )
         if result.first():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You cannot leave more than one review per product"
+                detail="You cannot leave more than one review per product",
             )
-        
+
         review = Review(**data.model_dump(), user_id=user_id)
         self.db.add(review)
         avg_rating = await self._get_avg_rating(data.book_id)
@@ -35,9 +37,13 @@ class ReviewService:
         await self.db.commit()
         await self.db.refresh(review)
         return review
-    
-    async def get_reviews(self, pagination: PaginationSchema, filters_schema: ReviewFilters) ->  dict:
-        filters = self._build_filters(**filters_schema.model_dump(exclude_unset=True, exclude_none=True))
+
+    async def get_reviews(
+        self, pagination: PaginationSchema, filters_schema: ReviewFilters
+    ) -> dict:
+        filters = self._build_filters(
+            **filters_schema.model_dump(exclude_unset=True, exclude_none=True)
+        )
         result = await self.db.scalars(
             select(Review)
             .where(*filters)
@@ -47,39 +53,37 @@ class ReviewService:
         )
         return {
             "total": await self._get_reviews_count(filters),
-            "items": list(result.all())
+            "items": list(result.all()),
         }
-    
+
     async def delete_review(self, review_id: int, user: User) -> None:
         result = await self.db.scalars(select(Review).where(Review.id == review_id))
         review = result.first()
         if not review:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Review not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
             )
         if review.user_id != user.id and user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only delete your own reviews"
+                detail="You can only delete your own reviews",
             )
 
         await self.db.delete(review)
         await self.db.commit()
-    
+
     async def _get_avg_rating(self, book_id: int) -> float:
         result = await self.db.scalars(
-            select(func.avg(Review.grade))
-            .where(Review.book_id == book_id)
+            select(func.avg(Review.grade)).where(Review.book_id == book_id)
         )
 
         avg_rating = result.first() or 0.0
         return avg_rating
-    
+
     async def _get_reviews_count(self, filters: list) -> int:
         result = await self.db.scalar(select(func.count(Review.id)).where(*filters))
         return result or 0
-    
+
     def _build_filters(self, **kwargs) -> list:
         filters = []
 
@@ -89,4 +93,3 @@ class ReviewService:
             filters.append(Review.book_id == kwargs["book_id"])
 
         return filters
-    

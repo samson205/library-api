@@ -10,6 +10,6 @@ from app.reviews.services import ReviewService
 
 async def get_review_service(
     db: AsyncSession = Depends(get_db),
-    book_service: BookService = Depends(get_book_service)
+    book_service: BookService = Depends(get_book_service),
 ) -> ReviewService:
     return ReviewService(db, book_service)

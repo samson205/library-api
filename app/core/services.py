@@ -11,7 +11,9 @@ class StorageService:
     CHUNK_SIZE = 1024 * 1024
 
     @staticmethod
-    async def save_file(file: UploadFile, folder: Path, max_size: int) -> tuple[str, int]:        
+    async def save_file(
+        file: UploadFile, folder: Path, max_size: int
+    ) -> tuple[str, int]:
         folder.mkdir(parents=True, exist_ok=True)
         extension = StorageService.get_file_extension(filename=file.filename)
         filename = f"{uuid.uuid4()}{extension}"
@@ -28,13 +30,13 @@ class StorageService:
 
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="File is too large"
+                        detail="File is too large",
                     )
                 await out_file.write(chunk)
 
         await file.close()
         return filename, total_size
-    
+
     @staticmethod
     def remove_file(path: Path | None) -> None:
         if not path:
@@ -50,10 +52,12 @@ class StorageService:
         if image and image.content_type not in ALLOWED_IMAGE_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only JPG, PNG, WebP images are allowed"
+                detail="Only JPG, PNG, WebP images are allowed",
             )
         images_path = MEDIA_ROOT / sub_folder / "images"
-        image_name, _ = await StorageService.save_file(image, images_path, MAX_IMAGE_SIZE)
+        image_name, _ = await StorageService.save_file(
+            image, images_path, MAX_IMAGE_SIZE
+        )
         image_url = f"{sub_folder}/images/{image_name}"
         return image_url
 

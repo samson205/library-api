@@ -10,9 +10,7 @@ router = APIRouter(prefix="/authors", tags=["authors"])
 
 
 @router.get("/", response_model=list[AuthorRead])
-async def get_all_authors(
-    service: AuthorService = Depends(get_author_service)
-):
+async def get_all_authors(service: AuthorService = Depends(get_author_service)):
     return await service.get_all_authors()
 
 
@@ -21,15 +19,14 @@ async def create_author(
     data: AuthorCreate = Depends(AuthorCreate.as_form),
     image: UploadFile | None = File(None),
     admin: User = Depends(get_current_admin),
-    service: AuthorService = Depends(get_author_service)
+    service: AuthorService = Depends(get_author_service),
 ):
     return await service.create_author(data, image)
 
 
 @router.get("/{author_id}", response_model=AuthorRead)
 async def get_author_by_id(
-    author_id: int,
-    service: AuthorService = Depends(get_author_service)
+    author_id: int, service: AuthorService = Depends(get_author_service)
 ):
     return await service.get_author_by_id(author_id)
 
@@ -39,7 +36,7 @@ async def update_author(
     author_id: int,
     data: AuthorUpdate,
     admin: User = Depends(get_current_admin),
-    service: AuthorService = Depends(get_author_service)
+    service: AuthorService = Depends(get_author_service),
 ):
     return await service.update_author(data, author_id)
 
@@ -48,7 +45,7 @@ async def update_author(
 async def soft_delete_author(
     author_id: int,
     admin: User = Depends(get_current_admin),
-    service: AuthorService = Depends(get_author_service)
+    service: AuthorService = Depends(get_author_service),
 ):
     await service.soft_delete_author(author_id)
 
@@ -58,7 +55,7 @@ async def update_author_image(
     author_id: int,
     image: UploadFile = File(...),
     admin: User = Depends(get_current_admin),
-    service: AuthorService = Depends(get_author_service)
+    service: AuthorService = Depends(get_author_service),
 ):
     return await service.update_author_image(author_id, image)
 
@@ -67,6 +64,6 @@ async def update_author_image(
 async def delete_author_image(
     author_id: int,
     admin: User = Depends(get_current_admin),
-    service: AuthorService = Depends(get_author_service)
+    service: AuthorService = Depends(get_author_service),
 ):
     await service.delete_author_image(author_id)

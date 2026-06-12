@@ -4,12 +4,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.shelves.models import shelf_books
 
-
 book_authors = Table(
     "book_authors",
     Base.metadata,
-    Column("book_id", Integer, ForeignKey("books.id", ondelete="CASCADE"), primary_key=True),
-    Column("author_id", Integer, ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True)
+    Column(
+        "book_id", Integer, ForeignKey("books.id", ondelete="CASCADE"), primary_key=True
+    ),
+    Column(
+        "author_id",
+        Integer,
+        ForeignKey("authors.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 
@@ -24,18 +30,22 @@ class Book(Base):
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    genre: Mapped["Genre"] = relationship("Genre", uselist=False, back_populates="books") # type: ignore
-    authors: Mapped[list["Author"]] = relationship(back_populates="books", secondary=book_authors) # type: ignore
-    reviews: Mapped[list["Review"]] = relationship("Review", uselist=True, back_populates="book") # type: ignore
-    shelves: Mapped[list["Shelf"]] = relationship("Shelf", secondary=shelf_books, back_populates="books") # type: ignore
-    files: Mapped[list["BookFile"]] = relationship("BookFile", uselist=True, back_populates="book")
+    genre: Mapped["Genre"] = relationship("Genre", uselist=False, back_populates="books")  # type: ignore
+    authors: Mapped[list["Author"]] = relationship(back_populates="books", secondary=book_authors)  # type: ignore
+    reviews: Mapped[list["Review"]] = relationship("Review", uselist=True, back_populates="book")  # type: ignore
+    shelves: Mapped[list["Shelf"]] = relationship("Shelf", secondary=shelf_books, back_populates="books")  # type: ignore
+    files: Mapped[list["BookFile"]] = relationship(
+        "BookFile", uselist=True, back_populates="book"
+    )
 
 
 class BookFile(Base):
     __tablename__ = "book_files"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    book_id: Mapped[int] = mapped_column(ForeignKey("books.id", ondelete="CASCADE"), nullable=False)
+    book_id: Mapped[int] = mapped_column(
+        ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+    )
     original_filename: Mapped[str] = mapped_column(String, nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)

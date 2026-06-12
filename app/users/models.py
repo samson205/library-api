@@ -14,12 +14,9 @@ class User(Base):
     # image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    reviews: Mapped[list["Review"]] = relationship( # type: ignore
-        back_populates="user",
-        cascade="all, delete-orphan"
+    reviews: Mapped[list["Review"]] = relationship(  # type: ignore
+        back_populates="user", cascade="all, delete-orphan"
     )
-    shelves: Mapped[list["Shelf"]] = relationship( # type: ignore
-        "Shelf",
-        back_populates="user",
-        cascade="all, delete-orphan"
+    shelves: Mapped[list["Shelf"]] = relationship(  # type: ignore
+        "Shelf", back_populates="user", cascade="all, delete-orphan"
     )

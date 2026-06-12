@@ -14,14 +14,14 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 async def get_reviews(
     pagination: PaginationSchema = Depends(),
     filters: ReviewFilters = Depends(),
-    service: ReviewService = Depends(get_review_service)
+    service: ReviewService = Depends(get_review_service),
 ):
     result = await service.get_reviews(pagination, filters)
     return {
         "total": result["total"],
         "page": pagination.page,
         "page_size": pagination.page_size,
-        "items": result["items"]
+        "items": result["items"],
     }
 
 
@@ -29,7 +29,7 @@ async def get_reviews(
 async def create_review(
     data: ReviewCreate,
     user: User = Depends(get_current_user),
-    service: ReviewService = Depends(get_review_service)
+    service: ReviewService = Depends(get_review_service),
 ):
     result = await service.create_review(data, user.id)
     return result
@@ -39,6 +39,6 @@ async def create_review(
 async def delete_review(
     review_id: int,
     user: User = Depends(get_current_user),
-    service: ReviewService = Depends(get_review_service)
+    service: ReviewService = Depends(get_review_service),
 ):
     await service.delete_review(review_id, user)

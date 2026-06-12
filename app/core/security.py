@@ -38,18 +38,18 @@ def decode_token(token: str, token_type: str) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=f"Could not validate {token_type} token",
-        headers={"WWW-Authenticate": "Bearer"}
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str | None = payload.get("sub")
-        decoded_token_type: str| None = payload.get("token_type")
+        decoded_token_type: str | None = payload.get("token_type")
         if not email or decoded_token_type != token_type:
             raise credentials_exception
     except jwt.ExpiredSignatureError:
         raise credentials_exception
     except jwt.PyJWTError:
         raise credentials_exception
-    
+
     return payload

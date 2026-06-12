@@ -10,21 +10,18 @@ class UserCreate(BaseModel):
 
     @classmethod
     def as_form(
-        cls,
-        email: Annotated[EmailStr, Form(...)],
-        password: Annotated[str, Form(...)]
+        cls, email: Annotated[EmailStr, Form(...)], password: Annotated[str, Form(...)]
     ) -> "UserCreate":
-        return cls(
-            email=email,
-            password=password
-        )
+        return cls(email=email, password=password)
 
 
 class UserRead(BaseModel):
     id: Annotated[int, Field(..., description="ID пользователя")]
     email: Annotated[EmailStr, Field(..., description="Email пользователя")]
     role: Annotated[str, Field(..., description="Роль пользователя")]
-    image_url: Annotated[str | None, Field(..., description="URL аватарки пользователя")]
+    image_url: Annotated[
+        str | None, Field(..., description="URL аватарки пользователя")
+    ]
     # is_active: Annotated[bool, Field(..., description="Активность пользователя")]
 
     model_config = ConfigDict(from_attributes=True)

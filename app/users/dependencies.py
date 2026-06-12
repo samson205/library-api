@@ -16,12 +16,12 @@ async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
 
 async def get_current_user(
     token: str | None = Depends(oauth2_schema),
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate access token",
-        headers={"WWW-Authenticate": "Bearer"}
+        headers={"WWW-Authenticate": "Bearer"},
     )
     if not token:
         raise credentials_exception
@@ -34,7 +34,7 @@ async def get_current_user(
 
 async def get_current_user_optional(
     token: str = Depends(oauth2_schema),
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ) -> User | None:
     try:
         payload = decode_token(token, "access")
@@ -48,6 +48,6 @@ async def get_current_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can perform this action"
+            detail="Only admins can perform this action",
         )
     return user

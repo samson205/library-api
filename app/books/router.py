@@ -2,7 +2,14 @@ from fastapi import APIRouter, status, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 
 from app.core.schemas import PaginationSchema
-from app.books.schemas import BookCreate, BookRead, BookUpdate, BookList, BookFilters, BookResponse
+from app.books.schemas import (
+    BookCreate,
+    BookRead,
+    BookUpdate,
+    BookList,
+    BookFilters,
+    BookResponse,
+)
 from app.books.services import BookService
 from app.books.dependencies import get_book_service
 from app.users.models import User
@@ -16,14 +23,14 @@ router = APIRouter(prefix="/books", tags=["books"])
 async def get_books(
     pagination: PaginationSchema = Depends(),
     filters: BookFilters = Depends(),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     result = await service.get_books(pagination, filters)
     return {
         "total": result["total"],
         "page": pagination.page,
         "page_size": pagination.page_size,
-        "items": result["items"]
+        "items": result["items"],
     }
 
 
@@ -33,16 +40,13 @@ async def create_book(
     book_file: UploadFile = File(),
     image: UploadFile | None = File(None),
     admin: User = Depends(get_current_admin),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     return await service.create_book(data, book_file, image)
 
 
 @router.get("/{book_id}", response_model=BookRead)
-async def get_book(
-    book_id: int,
-    service: BookService = Depends(get_book_service)
-):
+async def get_book(book_id: int, service: BookService = Depends(get_book_service)):
     return await service.get_book_by_id(book_id)
 
 
@@ -51,7 +55,7 @@ async def update_book(
     book_id: int,
     data: BookUpdate,
     admin: User = Depends(get_current_admin),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     return await service.update_book(data, book_id)
 
@@ -60,7 +64,7 @@ async def update_book(
 async def soft_delete_book(
     book_id: int,
     admin: User = Depends(get_current_admin),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     await service.soft_delete_book(book_id)
 
@@ -69,21 +73,22 @@ async def soft_delete_book(
 async def read_book(
     book_id: int,
     user: User = Depends(get_current_user),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     result = await service.get_book_file(book_id)
     return FileResponse(
         STORAGE_ROOT / result.file_path,
         media_type="application/epub+zip",
-        filename=f"book_{result.book_id}.epub"
+        filename=f"book_{result.book_id}.epub",
     )
+
 
 @router.put("/{book_id}/image", response_model=BookRead)
 async def update_book_image(
     book_id: int,
     image: UploadFile = File(...),
     admin: User = Depends(get_current_admin),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     return await service.update_book_image(book_id, image)
 
@@ -92,6 +97,6 @@ async def update_book_image(
 async def delete_book_image(
     book_id: int,
     admin: User = Depends(get_current_admin),
-    service: BookService = Depends(get_book_service)
+    service: BookService = Depends(get_book_service),
 ):
     await service.delete_book_image(book_id)

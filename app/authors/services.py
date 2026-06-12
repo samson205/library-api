@@ -14,46 +14,49 @@ class AuthorService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def create_author(self, data: AuthorCreate, image: UploadFile | None) -> Author:
+    async def create_author(
+        self, data: AuthorCreate, image: UploadFile | None
+    ) -> Author:
         image_url = await StorageService.save_image(image, "authors")
 
         try:
             author = Author(**data.model_dump(), image_url=image_url)
             self.db.add(author)
             await self.db.commit()
-            
+
         except Exception:
             await self.db.rollback()
             if image_url:
                 StorageService.remove_file(MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create author"
+                detail="Failed to create author",
             )
 
         await self.db.refresh(author)
         return author
-    
+
     async def get_all_authors(self) -> list[Author]:
-        result = await self.db.scalars(
-            select(Author).where(Author.is_active == True)
-        )
+        result = await self.db.scalars(select(Author).where(Author.is_active == True))
         return list(result.all())
-    
+
     async def get_author_by_id(self, author_id: int) -> Author:
-        result = await self.db.scalars(select(Author).where(Author.id == author_id, Author.is_active == True))
+        result = await self.db.scalars(
+            select(Author).where(Author.id == author_id, Author.is_active == True)
+        )
         author = result.first()
         if not author:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Author not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Author not found"
             )
         return author
-    
+
     async def get_authors_by_ids(self, authors_ids: list[int]) -> list[Author]:
-        result = await self.db.scalars(select(Author).where(Author.id.in_(authors_ids), Author.is_active == True))
+        result = await self.db.scalars(
+            select(Author).where(Author.id.in_(authors_ids), Author.is_active == True)
+        )
         return list(result.all())
-    
+
     async def update_author(self, data: AuthorUpdate, author_id: int) -> Author:
         upd_data = data.model_dump(exclude_unset=True)
         author = await self.get_author_by_id(author_id)
@@ -76,21 +79,21 @@ class AuthorService:
         try:
             author.image_url = image_url
             await self.db.commit()
-        
+
         except Exception:
             await self.db.rollback()
             if image_url:
                 StorageService.remove_file(MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update author image"
+                detail="Failed to update author image",
             )
-        
+
         if old_image_url:
             StorageService.remove_file(MEDIA_ROOT / old_image_url)
         await self.db.refresh(author)
         return author
-    
+
     async def delete_author_image(self, author_id: int) -> None:
         author = await self.get_author_by_id(author_id)
         image_url = author.image_url
@@ -105,10 +108,9 @@ class AuthorService:
             await self.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to delete author image"
+                detail="Failed to delete author image",
             )
-        
+
         if image_url:
             StorageService.remove_file(MEDIA_ROOT / image_url)
         return None
-    

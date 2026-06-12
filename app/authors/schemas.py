@@ -7,20 +7,18 @@ from pydantic import BaseModel, ConfigDict, Field
 class AuthorCreate(BaseModel):
     first_name: Annotated[str, Field(..., description="Имя автора")]
     last_name: Annotated[str, Field(..., description="Фамилия автора")]
-    bio: Annotated[str | None, Field(default=None, max_length=300, description="Биография автора")]
+    bio: Annotated[
+        str | None, Field(default=None, max_length=300, description="Биография автора")
+    ]
 
     @classmethod
     def as_form(
         cls,
         first_name: Annotated[str, Form(...)],
         last_name: Annotated[str, Form(...)],
-        bio: Annotated[str | None, Form()] = None
+        bio: Annotated[str | None, Form()] = None,
     ) -> "AuthorCreate":
-        return cls(
-            first_name=first_name,
-            last_name=last_name,
-            bio=bio
-        )
+        return cls(first_name=first_name, last_name=last_name, bio=bio)
 
 
 class AuthorShortRead(BaseModel):
@@ -39,4 +37,6 @@ class AuthorRead(AuthorShortRead):
 class AuthorUpdate(BaseModel):
     first_name: Annotated[str | None, Field(None, description="Имя автора")]
     last_name: Annotated[str | None, Field(None, description="Фамилия автора")]
-    bio: Annotated[str | None, Field(None, max_length=300, description="Биография автора")]
+    bio: Annotated[
+        str | None, Field(None, max_length=300, description="Биография автора")
+    ]

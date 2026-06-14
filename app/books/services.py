@@ -3,12 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import (
-    MEDIA_ROOT,
-    STORAGE_ROOT,
-    MAX_BOOK_SIZE,
-    ALLOWED_BOOK_EXTENSIONS,
-)
+from app.core.config import settings
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.genres.models import Genre
@@ -40,7 +35,7 @@ class BookService:
         image_url = await StorageService.save_image(image, "books")
 
         file_ext = StorageService.get_file_extension(file.filename)
-        if file_ext not in ALLOWED_BOOK_EXTENSIONS:
+        if file_ext not in settings.ALLOWED_BOOK_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only .epub, .fb2, .pdf files are allowed",
@@ -54,9 +49,9 @@ class BookService:
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
 
-        files_path = STORAGE_ROOT / "books" / "files"
+        files_path = settings.STORAGE_ROOT / "books" / "files"
         file_name, file_size = await StorageService.save_file(
-            file, files_path, MAX_BOOK_SIZE
+            file, files_path, settings.MAX_BOOK_SIZE
         )
 
         try:
@@ -82,7 +77,7 @@ class BookService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             if file_name:
                 StorageService.remove_file(files_path / file_name)
 
@@ -202,14 +197,14 @@ class BookService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update book image",
             )
 
         if old_image_url:
-            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
         await self.db.refresh(book)
         return book
 
@@ -231,7 +226,7 @@ class BookService:
             )
 
         if image_url:
-            StorageService.remove_file(MEDIA_ROOT / image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None
 
     async def _get_count_books(self, filters: list) -> int:

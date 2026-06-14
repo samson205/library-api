@@ -4,9 +4,9 @@ import jwt
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
 
-from app.core.config import SECRET_KEY, ALGORITHM
+from app.core.config import settings
 
-if not ALGORITHM or not SECRET_KEY:
+if not settings.ALGORITHM or not settings.SECRET_KEY:
     raise Exception
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -31,7 +31,7 @@ def create_token(data: dict, token_type: str):
         else timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
     to_encode.update({"exp": expire, "token_type": token_type})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_token(token: str, token_type: str) -> dict:
@@ -42,7 +42,7 @@ def decode_token(token: str, token_type: str) -> dict:
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str | None = payload.get("sub")
         decoded_token_type: str | None = payload.get("token_type")
         if not email or decoded_token_type != token_type:

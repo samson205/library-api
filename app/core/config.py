@@ -1,23 +1,40 @@
-import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME")
-DB_PORT = os.getenv("DB_PORT")
-
 
 BASE_DIR = Path(__file__).parent.parent.parent
-MEDIA_ROOT = BASE_DIR / "media"
-MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
-STORAGE_ROOT = BASE_DIR / "storage"
-STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
-ALLOWED_BOOK_EXTENSIONS = {".epub", ".fb2", ".pdf"}
-MAX_IMAGE_SIZE = 3 * 1024 * 1024
-MAX_BOOK_SIZE = 100 * 1024 * 1024
+
+
+class Settings(BaseSettings):
+    SECRET_KEY: str = ""
+    ALGORITHM: str = ""
+    DB_URL: str = ""
+    TEST_DB_URL: str = ""
+
+    ALLOWED_IMAGE_TYPES: set[str] = {"image/jpeg", "image/png", "image/webp"}
+    ALLOWED_BOOK_EXTENSIONS: set[str] = {".epub", ".fb2", ".pdf"}
+    MAX_IMAGE_SIZE: int = 3 * 1024 * 1024
+    MAX_BOOK_SIZE: int = 100 * 1024 * 1024
+
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        extra="ignore"
+    )
+
+    @property
+    def MEDIA_ROOT(self) -> Path:
+        path = BASE_DIR / "media"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    
+    @property
+    def STORAGE_ROOT(self) -> Path:
+        path = BASE_DIR / "storage"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+
+settings = Settings()

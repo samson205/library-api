@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import MEDIA_ROOT
+from app.core.config import settings
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.users.models import User
@@ -36,7 +36,7 @@ class ShelfService:
             await self.db.rollback()
 
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -180,14 +180,14 @@ class ShelfService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update shelf image",
             )
 
         if old_image_url:
-            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
 
         await self.db.refresh(shelf)
         return shelf
@@ -213,7 +213,7 @@ class ShelfService:
             )
 
         if image_url:
-            StorageService.remove_file(MEDIA_ROOT / image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None
 
     async def _get_count_shelves(self, filters: list) -> int:

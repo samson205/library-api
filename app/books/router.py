@@ -14,7 +14,7 @@ from app.books.services import BookService
 from app.books.dependencies import get_book_service
 from app.users.models import User
 from app.users.dependencies import get_current_admin, get_current_user
-from app.core.config import STORAGE_ROOT
+from app.core.config import settings
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -77,7 +77,7 @@ async def read_book(
 ):
     result = await service.get_book_file(book_id)
     return FileResponse(
-        STORAGE_ROOT / result.file_path,
+        settings.STORAGE_ROOT / result.file_path,
         media_type="application/epub+zip",
         filename=f"book_{result.book_id}.epub",
     )

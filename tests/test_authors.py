@@ -129,7 +129,7 @@ async def test_update_author_by_admin_success(client, db_session, existing_autho
     assert response.status_code == 200
 
     await db_session.refresh(existing_author)
-    assert existing_author.first_name == "new_first"
+    assert existing_author.first_name == author_data["first_name"]
 
 
 @pytest.mark.asyncio

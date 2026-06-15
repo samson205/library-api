@@ -25,16 +25,13 @@ async def mock_media_root(tmp_path, monkeypatch):
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def prepare_database():
     old_env_url = os.getenv("DB_URL")
-    if settings.TEST_DB_URL:
-        os.environ["DB_URL"] = settings.TEST_DB_URL
-        alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.TEST_DB_URL)
+    os.environ["DB_URL"] = settings.TEST_DB_URL
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.TEST_DB_URL)
     
     import asyncio
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
-
     yield
-
     await asyncio.to_thread(command.downgrade, alembic_cfg, "base")
 
     if old_env_url:
@@ -45,8 +42,7 @@ async def prepare_database():
 
 @pytest_asyncio.fixture
 async def db_session():
-    if settings.TEST_DB_URL:
-        engine = create_async_engine(settings.TEST_DB_URL, echo=False)
+    engine = create_async_engine(settings.TEST_DB_URL, echo=False)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with engine.connect() as connection:

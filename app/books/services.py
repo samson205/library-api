@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status, UploadFile
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -244,10 +244,13 @@ class BookService:
             filters.append(Book.genre_id == kwargs["genre_id"])
         if kwargs.get("rating"):
             filters.append(Book.rating >= kwargs["rating"])
-        if kwargs.get("author_id"):
+        if kwargs.get("author_ids"):
             filters.append(
                 Book.authors.any(
-                    (Author.id.in_(kwargs["author_id"])) & (Author.is_active == True)
+                    and_(
+                        Author.id.in_(kwargs["author_ids"]),
+                        Author.is_active == True
+                    )
                 )
             )
 

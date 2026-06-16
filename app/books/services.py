@@ -86,7 +86,7 @@ class BookService:
                 detail="Failed to create book",
             )
 
-        new_book = await self.get_book_by_id(book.id)
+        new_book = await self.get_book_by_id(book.id, load_files=True)
         return new_book
 
     async def get_books(

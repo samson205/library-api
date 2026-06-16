@@ -1,34 +1,6 @@
 import pytest
-import pytest_asyncio
 
 from app.core.config import settings
-from app.core.security import hash_password, create_token
-from app.users.models import User
-
-
-@pytest_asyncio.fixture
-async def user_with_img(db_session):
-    user = User(
-        email="user@test.com",
-        hashed_password=hash_password("user_user"),
-        role="reader",
-        image_url="users/images/avatar.jpg",
-        is_active=True,
-    )
-    db_session.add(user)
-    await db_session.flush()
-    await db_session.refresh(user)
-    return user
-
-
-@pytest.fixture
-def user_with_img_headers(user_with_img):
-    payload = {
-        "sub": user_with_img.email,
-        "role": user_with_img.role,
-        "id": user_with_img.id,
-    }
-    return {"Authorization": f"Bearer {create_token(payload, "access")}"}
 
 
 @pytest.mark.asyncio

@@ -1,17 +1,4 @@
 import pytest
-import pytest_asyncio
-
-from app.core.security import create_token
-
-
-@pytest_asyncio.fixture
-async def refresh_token(regular_user):
-    payload = {
-        "sub": regular_user.email,
-        "role": regular_user.role,
-        "id": regular_user.id,
-    }
-    return create_token(payload, "refresh")
 
 
 @pytest.mark.asyncio

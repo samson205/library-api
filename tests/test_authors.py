@@ -1,17 +1,8 @@
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 
 from app.core.config import settings
 from app.authors.models import Author
-
-
-@pytest_asyncio.fixture
-async def existing_author(db_session):
-    author = Author(first_name="first", last_name="last", bio="biography")
-    db_session.add(author)
-    await db_session.flush()
-    return author
 
 
 @pytest.mark.asyncio

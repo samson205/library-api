@@ -1,17 +1,7 @@
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 
 from app.genres.models import Genre
-
-
-@pytest_asyncio.fixture
-async def existing_genre(db_session):
-    genre = Genre(name="parent_genre")
-    db_session.add(genre)
-    await db_session.flush()
-    await db_session.refresh(genre)
-    return genre
 
 
 @pytest.mark.asyncio

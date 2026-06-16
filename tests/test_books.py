@@ -201,10 +201,15 @@ async def test_get_books_success(
 
 
 @pytest.mark.asyncio
-async def test_get_books_excluded_inactive(client, db_session, existing_genre, existing_author):
+async def test_get_books_excluded_inactive(
+    client, db_session, existing_genre, existing_author
+):
     book1 = Book(title="Обломов", genre_id=existing_genre.id, authors=[existing_author])
     book2 = Book(
-        title="Война и мир", genre_id=existing_genre.id, authors=[existing_author], is_active=False
+        title="Война и мир",
+        genre_id=existing_genre.id,
+        authors=[existing_author],
+        is_active=False,
     )
     db_session.add_all([book1, book2])
     await db_session.flush()
@@ -250,16 +255,15 @@ async def test_get_book_by_id_success(client, existing_book):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "is_exist",
-    [
-        False,
-        True
-    ]
-)
-async def test_get_book_by_id_not_found(client, db_session, existing_author, existing_genre, is_exist):
+@pytest.mark.parametrize("is_exist", [False, True])
+async def test_get_book_by_id_not_found(
+    client, db_session, existing_author, existing_genre, is_exist
+):
     inactive_book = Book(
-        title="Обломов", genre_id=existing_genre.id, authors=[existing_author], is_active=False
+        title="Обломов",
+        genre_id=existing_genre.id,
+        authors=[existing_author],
+        is_active=False,
     )
     db_session.add(inactive_book)
     await db_session.flush()

@@ -18,7 +18,9 @@ async def mock_media_root(tmp_path, monkeypatch):
     test_media_dir = tmp_path / "media"
     test_media_dir.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(settings.__class__, "MEDIA_ROOT", property(lambda self: test_media_dir))
+    monkeypatch.setattr(
+        settings.__class__, "MEDIA_ROOT", property(lambda self: test_media_dir)
+    )
     yield test_media_dir
 
 
@@ -28,8 +30,9 @@ async def prepare_database():
     os.environ["DB_URL"] = settings.TEST_DB_URL
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", settings.TEST_DB_URL)
-    
+
     import asyncio
+
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
     yield
     await asyncio.to_thread(command.downgrade, alembic_cfg, "base")
@@ -43,7 +46,9 @@ async def prepare_database():
 @pytest_asyncio.fixture
 async def db_session():
     engine = create_async_engine(settings.TEST_DB_URL, echo=False)
-    async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     async with engine.connect() as connection:
         await connection.begin()
@@ -57,7 +62,9 @@ async def db_session():
 async def client(db_session):
     app.dependency_overrides[get_db] = lambda: db_session
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
 
     app.dependency_overrides.clear()
@@ -69,7 +76,7 @@ async def admin_user(db_session):
         email="admin@test.com",
         hashed_password=hash_password("admin123"),
         role="admin",
-        is_active=True
+        is_active=True,
     )
     db_session.add(admin)
     await db_session.flush()
@@ -82,7 +89,7 @@ async def regular_user(db_session):
         email="reader@test.com",
         hashed_password=hash_password("reader123"),
         role="reader",
-        is_active=True
+        is_active=True,
     )
     db_session.add(user)
     await db_session.flush()
@@ -97,5 +104,9 @@ async def admin_headers(admin_user):
 
 @pytest_asyncio.fixture
 async def user_headers(regular_user):
-    payload = {"sub": regular_user.email, "role": regular_user.role, "id": regular_user.id}
+    payload = {
+        "sub": regular_user.email,
+        "role": regular_user.role,
+        "id": regular_user.id,
+    }
     return {"Authorization": f"Bearer {create_token(payload, "access")}"}

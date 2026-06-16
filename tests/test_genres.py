@@ -7,9 +7,7 @@ from app.genres.models import Genre
 
 @pytest_asyncio.fixture
 async def existing_genre(db_session):
-    genre = Genre(
-        name="parent_genre"
-    )
+    genre = Genre(name="parent_genre")
     db_session.add(genre)
     await db_session.flush()
     await db_session.refresh(genre)
@@ -44,9 +42,10 @@ async def test_create_genre_by_anonymous_unauthorized(client):
     assert response.status_code == 401
 
 
-
 @pytest.mark.asyncio
-async def test_create_genre_with_parent_success(client, db_session, existing_genre, admin_headers):
+async def test_create_genre_with_parent_success(
+    client, db_session, existing_genre, admin_headers
+):
     genre_data = {"name": "Художественная литература", "parent_id": existing_genre.id}
     response = await client.post("/genres/", json=genre_data, headers=admin_headers)
 
@@ -73,7 +72,9 @@ async def test_create_genre_with_parent_not_found(client, db_session, admin_head
 
 
 @pytest.mark.asyncio
-async def test_create_genre_with_inactive_parent_not_found(client, db_session, admin_headers):
+async def test_create_genre_with_inactive_parent_not_found(
+    client, db_session, admin_headers
+):
     parent_genre = Genre(name="inactive_parent", is_active=False)
     db_session.add(parent_genre)
     await db_session.flush()
@@ -152,9 +153,13 @@ async def test_get_inactive_genre_by_id_not_found(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_update_genre_by_admin_success(client, db_session, existing_genre, admin_headers):
+async def test_update_genre_by_admin_success(
+    client, db_session, existing_genre, admin_headers
+):
     upd_data = {"name": "new_name"}
-    response = await client.patch(f"/genres/{existing_genre.id}", json=upd_data, headers=admin_headers)
+    response = await client.patch(
+        f"/genres/{existing_genre.id}", json=upd_data, headers=admin_headers
+    )
 
     assert response.status_code == 200
     await db_session.refresh(existing_genre)
@@ -171,9 +176,13 @@ async def test_update_genre_not_found(client, admin_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_genre_by_regular_user_forbidden(client, existing_genre, user_headers):
+async def test_update_genre_by_regular_user_forbidden(
+    client, existing_genre, user_headers
+):
     upd_data = {"name": "new_name"}
-    response = await client.patch(f"/genres/{existing_genre.id}", json=upd_data, headers=user_headers)
+    response = await client.patch(
+        f"/genres/{existing_genre.id}", json=upd_data, headers=user_headers
+    )
 
     assert response.status_code == 403
 
@@ -187,8 +196,12 @@ async def test_update_genre_by_anonymous_unauthorized(client, existing_genre):
 
 
 @pytest.mark.asyncio
-async def test_soft_delete_genre_by_admin_success(client, db_session, existing_genre, admin_headers):
-    response = await client.delete(f"/genres/{existing_genre.id}", headers=admin_headers)
+async def test_soft_delete_genre_by_admin_success(
+    client, db_session, existing_genre, admin_headers
+):
+    response = await client.delete(
+        f"/genres/{existing_genre.id}", headers=admin_headers
+    )
 
     assert response.status_code == 204
     await db_session.refresh(existing_genre)
@@ -204,7 +217,9 @@ async def test_soft_delete_genre_not_found(client, admin_headers):
 
 
 @pytest.mark.asyncio
-async def test_soft_delete_already_inactive_genre_not_found(client, db_session, admin_headers):
+async def test_soft_delete_already_inactive_genre_not_found(
+    client, db_session, admin_headers
+):
     genre = Genre(name="inactive", is_active=False)
     db_session.add(genre)
     await db_session.flush()
@@ -217,7 +232,9 @@ async def test_soft_delete_already_inactive_genre_not_found(client, db_session, 
 
 
 @pytest.mark.asyncio
-async def test_soft_delete_genre_by_regular_user_forbidden(client, existing_genre, user_headers):
+async def test_soft_delete_genre_by_regular_user_forbidden(
+    client, existing_genre, user_headers
+):
     response = await client.delete(f"/genres/{existing_genre.id}", headers=user_headers)
 
     assert response.status_code == 403

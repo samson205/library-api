@@ -274,3 +274,234 @@ async def test_get_book_by_id_not_found(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Book not found or inactive"
+
+
+@pytest.mark.asyncio
+async def test_update_book_by_admin_success(
+    client, db_session, existing_book, admin_headers
+):
+    upd_data = {"title": "new_title"}
+    response = await client.patch(
+        f"/books/{existing_book.id}", json=upd_data, headers=admin_headers
+    )
+
+    assert response.status_code == 200
+    await db_session.refresh(existing_book)
+    assert existing_book.title == upd_data["title"]
+    assert response.json()["title"] == upd_data["title"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_headers,expected_status", [(True, 403), (False, 401)])
+async def test_update_book_forbidden_or_unauthorized(
+    client, existing_book, user_headers, use_headers, expected_status
+):
+    upd_data = {"title": "new_title"}
+    if use_headers:
+        response = await client.patch(
+            f"/books/{existing_book.id}", json=upd_data, headers=user_headers
+        )
+    else:
+        response = await client.patch(f"/books/{existing_book.id}", json=upd_data)
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_update_book_not_found(client, admin_headers):
+    upd_data = {"title": "new_title"}
+    response = await client.patch("/books/101", json=upd_data, headers=admin_headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Book not found or inactive"
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_book_by_admin_success(
+    client, db_session, existing_book, admin_headers
+):
+    response = await client.delete(f"/books/{existing_book.id}", headers=admin_headers)
+
+    assert response.status_code == 204
+    await db_session.refresh(existing_book)
+    assert existing_book.is_active == False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_headers,expected_status", [(True, 403), (False, 401)])
+async def test_soft_delete_book_forbidden_or_unauthorized(
+    client, existing_book, user_headers, use_headers, expected_status
+):
+    if use_headers:
+        response = await client.delete(
+            f"/books/{existing_book.id}", headers=user_headers
+        )
+    else:
+        response = await client.delete(f"/books/{existing_book.id}")
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_book_not_found(client, admin_headers):
+    response = await client.delete("/books/101", headers=admin_headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Book not found or inactive"
+
+
+@pytest.mark.asyncio
+async def test_update_book_image_by_admin_success(
+    client, db_session, existing_book, admin_headers, mock_media_root
+):
+    file_data = {"image": ("image.jpg", b"fake-image-bytes-content", "image/jpeg")}
+    response = await client.put(
+        f"/books/{existing_book.id}/image", files=file_data, headers=admin_headers
+    )
+
+    assert response.status_code == 200
+
+    await db_session.refresh(existing_book)
+    assert existing_book.image_url is not None
+
+    files_in_media = [f for f in mock_media_root.glob("**/*") if f.is_file()]
+    assert len(files_in_media) == 1
+
+    saved_file = files_in_media[0]
+    assert saved_file.is_file()
+    assert saved_file.stat().st_size > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_headers,expected_status", [(True, 403), (False, 401)])
+async def test_update_book_image_forbidden_or_unauthorized(
+    client, existing_book, user_headers, use_headers, expected_status
+):
+    file_data = {"image": ("image.jpg", b"fake-image-bytes-content", "image/jpeg")}
+    if use_headers:
+        response = await client.put(
+            f"/books/{existing_book.id}/image", files=file_data, headers=user_headers
+        )
+    else:
+        response = await client.put(f"/books/{existing_book.id}/image", files=file_data)
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_update_book_image_incorrect_type(client, existing_book, admin_headers):
+    file_data = {"image": ("image.gif", b"fake-image-bytes-content", "image/gif")}
+    response = await client.put(
+        f"/books/{existing_book.id}/image", files=file_data, headers=admin_headers
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_update_book_image_too_big(client, existing_book, admin_headers):
+    file_data = {
+        "image": ("image.jpg", b"0" * (settings.MAX_IMAGE_SIZE + 100), "image/jpeg")
+    }
+    response = await client.put(
+        f"/books/{existing_book.id}/image", files=file_data, headers=admin_headers
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "File is too large"
+
+
+@pytest.mark.asyncio
+async def test_delete_book_image_by_admin_success(
+    client, db_session, existing_book, admin_headers, mock_media_root
+):
+    fake_image_path = mock_media_root / existing_book.image_url
+    fake_image_path.parent.mkdir(parents=True, exist_ok=True)
+    fake_image_path.write_bytes(b"fake-image-bytes-content")
+    assert fake_image_path.exists() == True
+
+    response = await client.delete(
+        f"/books/{existing_book.id}/image", headers=admin_headers
+    )
+
+    assert response.status_code == 204
+    assert fake_image_path.exists() == False
+
+    await db_session.refresh(existing_book)
+    assert existing_book.image_url is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_headers,expected_status", [(True, 403), (False, 401)])
+async def test_delete_book_image_forbidden_or_unauthorized(
+    client, existing_book, user_headers, use_headers, expected_status
+):
+    if use_headers:
+        response = await client.delete(
+            f"/books/{existing_book.id}/image", headers=user_headers
+        )
+    else:
+        response = await client.delete(f"/books/{existing_book.id}/image")
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_delete_book_image_not_found(client, admin_headers):
+    response = await client.delete(
+        f"/books/101/image", headers=admin_headers
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Book not found or inactive"
+
+
+@pytest.mark.asyncio
+async def test_delete_book_image_missing_on_disk(
+    client, db_session, existing_book, admin_headers, mock_media_root
+):
+    assert existing_book.image_url is not None
+    assert (mock_media_root / existing_book.image_url).exists() is False
+
+    response = await client.delete(
+        f"/books/{existing_book.id}/image", headers=admin_headers
+    )
+
+    assert response.status_code == 204
+
+    await db_session.refresh(existing_book)
+    assert existing_book.image_url is None
+
+
+@pytest.mark.asyncio
+async def test_read_book_by_regular_user_success(client, book_with_file, user_headers, mock_storage_root):
+    fake_content = b"fake-file-bytes-content"
+    fake_file_path = mock_storage_root / book_with_file.files[0].file_path
+    fake_file_path.parent.mkdir(parents=True, exist_ok=True)
+    fake_file_path.write_bytes(fake_content)
+    params = {"file_type": "pdf"}
+    response = await client.get(f"/books/{book_with_file.id}/read", params=params, headers=user_headers)
+
+    assert response.status_code == 200
+    assert response.content == fake_content 
+    assert response.headers.get("content-type") == "application/pdf"
+
+
+@pytest.mark.asyncio
+async def test_read_book_by_anonymous_unauthorized(client, book_with_file):
+    params = {"file_type": "pdf"}
+    response = await client.get(f"/books/{book_with_file.id}/read", params=params)
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_read_book_file_missing_on_disk(client, book_with_file, user_headers, mock_storage_root):
+    fake_file_path = mock_storage_root / book_with_file.files[0].file_path
+    assert fake_file_path.exists() == False
+
+    params = {"file_type": "pdf"}
+    response = await client.get(f"/books/{book_with_file.id}/read", params=params, headers=user_headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Book file not found"

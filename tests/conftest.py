@@ -4,6 +4,8 @@ import pytest
 import pytest_asyncio
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from httpx import AsyncClient, ASGITransport
 
@@ -13,7 +15,7 @@ from app.core.config import settings
 from app.genres.models import Genre
 from app.users.models import User
 from app.authors.models import Author
-from app.books.models import Book
+from app.books.models import Book, BookFile
 from app.main import app
 
 
@@ -181,11 +183,44 @@ async def existing_author(db_session):
 
 @pytest_asyncio.fixture
 async def existing_book(existing_author, existing_genre, db_session):
-    book = Book(title="Обломов", genre_id=existing_genre.id, authors=[existing_author])
+    book = Book(
+        title="Обломов",
+        genre_id=existing_genre.id,
+        image_url="books/images/oblomov.jpg",
+        authors=[existing_author]
+    )
     db_session.add(book)
     await db_session.flush()
     await db_session.refresh(book)
     return book
+
+
+@pytest_asyncio.fixture
+async def book_with_file(existing_author, existing_genre, db_session):
+    book = Book(
+        title="Обломов",
+        genre_id=existing_genre.id,
+        authors=[existing_author]
+    )
+    db_session.add(book)
+    await db_session.flush()
+
+    book_file = BookFile(
+        book_id=book.id,
+        original_filename="oblomov.pdf",
+        file_path=f"books/files/oblomov.pdf",
+        file_size=10,
+        file_format="pdf",
+    )
+    db_session.add(book_file)
+    await db_session.flush()
+    await db_session.refresh(book)
+    book = await db_session.scalars(
+        select(Book)
+        .options(selectinload(Book.files), selectinload(Book.authors), selectinload(Book.genre))
+        .where(Book.id == book.id)
+    )
+    return book.first()
 
 
 @pytest_asyncio.fixture

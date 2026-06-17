@@ -169,7 +169,7 @@ class BookService:
                 detail="Failed to update book",
             )
 
-        await self.db.refresh(book)
+        book = await self.get_book_by_id(book_id, load_files=True)
         return book
 
     async def soft_delete_book(self, book_id: int) -> None:
@@ -205,7 +205,7 @@ class BookService:
 
         if old_image_url:
             StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
-        await self.db.refresh(book)
+        book = await self.get_book_by_id(book_id)
         return book
 
     async def delete_book_image(self, book_id: int) -> None:

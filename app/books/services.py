@@ -132,10 +132,10 @@ class BookService:
             )
         return book
 
-    async def get_book_file(self, book_id: int) -> BookFile:
+    async def get_book_file(self, book_id: int, file_type: str) -> BookFile:
         book = await self.get_book_by_id(book_id, load_files=True)
-        file = next((f for f in book.files if f.file_format == "epub"), None)
-        if not file:
+        file = next((f for f in book.files if f.file_format == file_type), None)
+        if not file or not (settings.STORAGE_ROOT / file.file_path).exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Book file not found"
             )

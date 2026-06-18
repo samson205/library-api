@@ -16,6 +16,7 @@ from app.genres.models import Genre
 from app.users.models import User
 from app.authors.models import Author
 from app.books.models import Book, BookFile
+from app.reviews.models import Review
 from app.main import app
 
 
@@ -193,6 +194,20 @@ async def existing_book(existing_author, existing_genre, db_session):
     await db_session.flush()
     await db_session.refresh(book)
     return book
+
+
+@pytest_asyncio.fixture
+async def existing_review(db_session, existing_book, regular_user):
+    review = Review(
+        comment="good",
+        grade=5,
+        book_id=existing_book.id,
+        user_id=regular_user.id
+    )
+    db_session.add(review)
+    await db_session.flush()
+    await db_session.refresh(review)
+    return review
 
 
 @pytest_asyncio.fixture

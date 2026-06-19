@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import MEDIA_ROOT
+from app.core.config import settings
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.users.models import User
@@ -36,7 +36,7 @@ class ShelfService:
             await self.db.rollback()
 
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -56,28 +56,15 @@ class ShelfService:
             current_user_id,
             **filters_schema.model_dump(exclude_none=True, exclude_unset=True)
         )
-        stmt = (
-            select(Shelf, func.count(shelf_books.c.book_id).label("books_count"))
-            .outerjoin(shelf_books, Shelf.id == shelf_books.c.shelf_id)
+        result = await self.db.scalars(
+            select(Shelf)
             .where(*filters)
             .group_by(Shelf.id)
             .order_by(Shelf.id)
             .offset((pagination.page - 1) * pagination.page_size)
             .limit(pagination.page_size)
         )
-        rows = (await self.db.execute(stmt)).all()
-        items = [
-            ShelfReadBase(
-                id=shelf.id,
-                title=shelf.title,
-                is_private=shelf.is_private,
-                user_id=shelf.user_id,
-                image_url=shelf.image_url,
-                created_at=shelf.created_at,
-                books_count=books_count,
-            )
-            for shelf, books_count in rows
-        ]
+        items = result.all()
         total = await self._get_count_shelves(filters)
         return {"total": total, "items": items}
 
@@ -101,7 +88,7 @@ class ShelfService:
         shelf = result.first()
         if not shelf:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Shelf not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Shelf not found or you don't have access"
             )
         return shelf
 
@@ -180,16 +167,16 @@ class ShelfService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update shelf image",
             )
 
         if old_image_url:
-            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
 
-        await self.db.refresh(shelf)
+        shelf = await self.get_shelf_by_id(shelf_id, user.id)
         return shelf
 
     async def delete_shelf_image(self, shelf_id: int, user: User) -> None:
@@ -213,7 +200,7 @@ class ShelfService:
             )
 
         if image_url:
-            StorageService.remove_file(MEDIA_ROOT / image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None
 
     async def _get_count_shelves(self, filters: list) -> int:

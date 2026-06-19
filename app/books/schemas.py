@@ -87,7 +87,7 @@ class BookList(BaseList):
 
 
 class BookFilters(BaseModel):
-    author_id: Annotated[
+    author_ids: Annotated[
         list[int] | None, Field(Query(default=None), description="ID авторов")
     ]
     genre_id: Annotated[int | None, Field(None, description="ID жанра")]

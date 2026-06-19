@@ -1,14 +1,9 @@
 from fastapi import HTTPException, status, UploadFile
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import (
-    MEDIA_ROOT,
-    STORAGE_ROOT,
-    MAX_BOOK_SIZE,
-    ALLOWED_BOOK_EXTENSIONS,
-)
+from app.core.config import settings
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.genres.models import Genre
@@ -40,7 +35,7 @@ class BookService:
         image_url = await StorageService.save_image(image, "books")
 
         file_ext = StorageService.get_file_extension(file.filename)
-        if file_ext not in ALLOWED_BOOK_EXTENSIONS:
+        if file_ext not in settings.ALLOWED_BOOK_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only .epub, .fb2, .pdf files are allowed",
@@ -54,9 +49,9 @@ class BookService:
             )
         await self.genre_service.get_genre_by_id(data.genre_id)
 
-        files_path = STORAGE_ROOT / "books" / "files"
+        files_path = settings.STORAGE_ROOT / "books" / "files"
         file_name, file_size = await StorageService.save_file(
-            file, files_path, MAX_BOOK_SIZE
+            file, files_path, settings.MAX_BOOK_SIZE
         )
 
         try:
@@ -82,7 +77,7 @@ class BookService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             if file_name:
                 StorageService.remove_file(files_path / file_name)
 
@@ -91,7 +86,7 @@ class BookService:
                 detail="Failed to create book",
             )
 
-        new_book = await self.get_book_by_id(book.id)
+        new_book = await self.get_book_by_id(book.id, load_files=True)
         return new_book
 
     async def get_books(
@@ -137,10 +132,10 @@ class BookService:
             )
         return book
 
-    async def get_book_file(self, book_id: int) -> BookFile:
+    async def get_book_file(self, book_id: int, file_type: str) -> BookFile:
         book = await self.get_book_by_id(book_id, load_files=True)
-        file = next((f for f in book.files if f.file_format == "epub"), None)
-        if not file:
+        file = next((f for f in book.files if f.file_format == file_type), None)
+        if not file or not (settings.STORAGE_ROOT / file.file_path).exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Book file not found"
             )
@@ -174,7 +169,7 @@ class BookService:
                 detail="Failed to update book",
             )
 
-        await self.db.refresh(book)
+        book = await self.get_book_by_id(book_id, load_files=True)
         return book
 
     async def soft_delete_book(self, book_id: int) -> None:
@@ -202,15 +197,15 @@ class BookService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update book image",
             )
 
         if old_image_url:
-            StorageService.remove_file(MEDIA_ROOT / old_image_url)
-        await self.db.refresh(book)
+            StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
+        book = await self.get_book_by_id(book_id)
         return book
 
     async def delete_book_image(self, book_id: int) -> None:
@@ -231,7 +226,7 @@ class BookService:
             )
 
         if image_url:
-            StorageService.remove_file(MEDIA_ROOT / image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None
 
     async def _get_count_books(self, filters: list) -> int:
@@ -249,10 +244,13 @@ class BookService:
             filters.append(Book.genre_id == kwargs["genre_id"])
         if kwargs.get("rating"):
             filters.append(Book.rating >= kwargs["rating"])
-        if kwargs.get("author_id"):
+        if kwargs.get("author_ids"):
             filters.append(
                 Book.authors.any(
-                    (Author.id.in_(kwargs["author_id"])) & (Author.is_active == True)
+                    and_(
+                        Author.id.in_(kwargs["author_ids"]),
+                        Author.is_active == True
+                    )
                 )
             )
 

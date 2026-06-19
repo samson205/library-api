@@ -30,7 +30,7 @@ async def get_genre_by_id(
     return await service.get_genre_by_id(genre_id)
 
 
-@router.put("/{genre_id}", response_model=GenreRead)
+@router.patch("/{genre_id}", response_model=GenreRead)
 async def update_genre(
     genre_id: int,
     data: GenreUpdate,

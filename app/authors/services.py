@@ -2,7 +2,7 @@ from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import MEDIA_ROOT
+from app.core.config import settings
 from app.core.services import StorageService
 from app.authors.models import Author
 from app.authors.schemas import AuthorCreate, AuthorUpdate
@@ -27,7 +27,7 @@ class AuthorService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create author",
@@ -83,14 +83,14 @@ class AuthorService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update author image",
             )
 
         if old_image_url:
-            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
         await self.db.refresh(author)
         return author
 
@@ -112,5 +112,5 @@ class AuthorService:
             )
 
         if image_url:
-            StorageService.remove_file(MEDIA_ROOT / image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None

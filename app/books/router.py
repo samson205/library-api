@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, UploadFile, File
+from fastapi import APIRouter, status, Depends, UploadFile, File, Query
 from fastapi.responses import FileResponse
 
 from app.core.schemas import PaginationSchema
@@ -14,7 +14,7 @@ from app.books.services import BookService
 from app.books.dependencies import get_book_service
 from app.users.models import User
 from app.users.dependencies import get_current_admin, get_current_user
-from app.core.config import STORAGE_ROOT
+from app.core.config import settings
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -72,14 +72,16 @@ async def soft_delete_book(
 @router.get("/{book_id}/read")
 async def read_book(
     book_id: int,
+    file_type: str = Query("epub", description="Формат файла"),
     user: User = Depends(get_current_user),
     service: BookService = Depends(get_book_service),
 ):
-    result = await service.get_book_file(book_id)
+    result = await service.get_book_file(book_id, file_type)
+    media_type = f"application/{file_type}"
     return FileResponse(
-        STORAGE_ROOT / result.file_path,
-        media_type="application/epub+zip",
-        filename=f"book_{result.book_id}.epub",
+        settings.STORAGE_ROOT / result.file_path,
+        media_type=media_type,
+        filename=f"book_{result.book_id}.{file_type}",
     )
 
 

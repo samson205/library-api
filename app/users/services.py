@@ -6,7 +6,7 @@ from app.users.schemas import UserCreate
 from app.users.models import User
 from app.core.security import hash_password
 from app.core.services import StorageService
-from app.core.config import MEDIA_ROOT
+from app.core.config import settings
 
 
 class UserService:
@@ -68,14 +68,14 @@ class UserService:
         except Exception:
             await self.db.rollback()
             if image_url:
-                StorageService.remove_file(MEDIA_ROOT / image_url)
+                StorageService.remove_file(settings.MEDIA_ROOT / image_url)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to load user avatar",
             )
 
         if old_image_url:
-            StorageService.remove_file(MEDIA_ROOT / old_image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / old_image_url)
 
         await self.db.refresh(user)
         return user
@@ -96,5 +96,5 @@ class UserService:
             )
 
         if image_url:
-            StorageService.remove_file(MEDIA_ROOT / image_url)
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None

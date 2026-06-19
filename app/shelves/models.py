@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    select,
     Table,
     Column,
     Integer,
@@ -10,7 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property
 
 from app.core.database import Base
 
@@ -50,6 +51,10 @@ class Shelf(Base):
         "Book", secondary=shelf_books, back_populates="shelves"
     )
 
-    @property
-    def books_count(self) -> int:
-        return len(self.books)
+    books_count: Mapped[int] = column_property(
+        select(func.count(shelf_books.c.book_id))
+        .where(shelf_books.c.shelf_id == id)
+        .correlate_except(shelf_books)
+        .scalar_subquery()
+    )
+    

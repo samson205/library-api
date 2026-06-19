@@ -7,6 +7,7 @@ from app.shelves.schemas import (
     ShelfCreate,
     ShelfFilters,
     ShelfList,
+    ShelfUpdate,
 )
 from app.shelves.services import ShelfService
 from app.shelves.dependencies import get_shelf_service
@@ -51,6 +52,16 @@ async def get_shelf_by_id(
 ):
     user_id = user.id if user else None
     return await service.get_shelf_by_id(shelf_id, user_id)
+
+
+@router.patch("/{shelf_id}", response_model=ShelfReadBase)
+async def update_shelf(
+    shelf_id: int,
+    data: ShelfUpdate,
+    user: User = Depends(get_current_user),
+    service: ShelfService = Depends(get_shelf_service),
+):
+    return await service.update_shelf(data, shelf_id, user)
 
 
 @router.put("/{shelf_id}/image", response_model=ShelfRead)

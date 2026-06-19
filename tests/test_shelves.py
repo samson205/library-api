@@ -132,6 +132,60 @@ async def test_get_shelf_not_found(client):
 
 
 @pytest.mark.asyncio
+async def test_update_shelf_success(client, existing_shelf, user_headers):
+    upd_data = {"title": "upd_title"}
+    response = await client.patch(
+        f"/shelves/{existing_shelf.id}", json=upd_data, headers=user_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json().get("title") == upd_data["title"]
+
+
+@pytest.mark.asyncio
+async def test_update_shelf_by_anonymous_unauthorized(client, existing_shelf):
+    upd_data = {"title": "upd_title"}
+    response = await client.patch(f"/shelves/{existing_shelf.id}", json=upd_data)
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_public_shelf_by_another_user_forbidden(
+    client, existing_shelf, user_with_img_headers
+):
+    upd_data = {"title": "upd_title"}
+    response = await client.patch(
+        f"/shelves/{existing_shelf.id}", json=upd_data, headers=user_with_img_headers
+    )
+
+    assert response.status_code == 403
+    assert response.json().get("detail") == "You don't have access"
+
+
+@pytest.mark.asyncio
+async def test_update_private_shelf_by_another_user_not_found(
+    client, private_shelf, user_with_img_headers
+):
+    upd_data = {"title": "upd_title"}
+    response = await client.patch(
+        f"/shelves/{private_shelf.id}", json=upd_data, headers=user_with_img_headers
+    )
+
+    assert response.status_code == 404
+    assert response.json().get("detail") == "Shelf not found or you don't have access"
+
+
+@pytest.mark.asyncio
+async def test_update_shelf_not_found(client, user_headers):
+    upd_data = {"title": "upd_title"}
+    response = await client.patch(f"/shelves/101", json=upd_data, headers=user_headers)
+
+    assert response.status_code == 404
+    assert response.json().get("detail") == "Shelf not found or you don't have access"
+
+
+@pytest.mark.asyncio
 async def test_update_shelf_image_success(
     client, db_session, existing_shelf, user_headers, mock_media_root
 ):
@@ -157,7 +211,9 @@ async def test_update_shelf_image_success(
 @pytest.mark.asyncio
 async def test_update_shelf_image_not_found(client, user_headers):
     image_data = {"image": ("image.jpg", b"fake-image-bytes-content", "image/jpeg")}
-    response = await client.put("/shelves/101/image", files=image_data, headers=user_headers)
+    response = await client.put(
+        "/shelves/101/image", files=image_data, headers=user_headers
+    )
 
     assert response.status_code == 404
     assert response.json().get("detail") == "Shelf not found or you don't have access"

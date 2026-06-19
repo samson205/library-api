@@ -57,4 +57,3 @@ class Shelf(Base):
         .correlate_except(shelf_books)
         .scalar_subquery()
     )
-    

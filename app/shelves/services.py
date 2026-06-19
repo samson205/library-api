@@ -8,8 +8,8 @@ from app.core.config import settings
 from app.core.services import StorageService
 from app.core.schemas import PaginationSchema
 from app.users.models import User
-from app.shelves.schemas import ShelfCreate, ShelfFilters, ShelfReadBase
-from app.shelves.models import Shelf, shelf_books
+from app.shelves.schemas import ShelfCreate, ShelfFilters, ShelfUpdate
+from app.shelves.models import Shelf
 from app.books.models import Book
 from app.books.services import BookService
 from app.authors.models import Author
@@ -78,7 +78,7 @@ class ShelfService:
             )
             .options(
                 with_loader_criteria(Book, Book.is_active == True),
-                with_loader_criteria(Author, Author.is_active == True)
+                with_loader_criteria(Author, Author.is_active == True),
             )
             .where(
                 Shelf.id == shelf_id,
@@ -88,8 +88,24 @@ class ShelfService:
         shelf = result.first()
         if not shelf:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Shelf not found or you don't have access"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shelf not found or you don't have access",
             )
+        return shelf
+
+    async def update_shelf(self, data: ShelfUpdate, shelf_id: int, user: User) -> Shelf:
+        shelf = await self.get_shelf_by_id(shelf_id, user.id)
+        if shelf.user_id != user.id and user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access"
+            )
+
+        upd_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        for key, value in upd_data.items():
+            setattr(shelf, key, value)
+
+        await self.db.commit()
+        await self.db.refresh(shelf)
         return shelf
 
     async def add_book_to_shelf(

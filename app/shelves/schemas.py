@@ -19,6 +19,13 @@ class ShelfCreate(BaseModel):
         return cls(title=title, is_private=is_private)
 
 
+class ShelfUpdate(BaseModel):
+    title: Annotated[
+        str | None, Field(None, max_length=100, description="Название полки")
+    ]
+    is_private: Annotated[bool | None, Field(None, description="Приватность полки")]
+
+
 class ShelfReadBase(BaseModel):
     id: Annotated[int, Field(..., description="ID полки")]
     title: Annotated[str, Field(..., description="Название книги")]

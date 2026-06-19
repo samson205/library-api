@@ -88,7 +88,7 @@ class ShelfService:
         shelf = result.first()
         if not shelf:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Shelf not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Shelf not found or you don't have access"
             )
         return shelf
 

@@ -17,6 +17,7 @@ from app.users.models import User
 from app.authors.models import Author
 from app.books.models import Book, BookFile
 from app.reviews.models import Review
+from app.shelves.models import Shelf
 from app.main import app
 
 
@@ -208,6 +209,60 @@ async def existing_review(db_session, existing_book, regular_user):
     await db_session.flush()
     await db_session.refresh(review)
     return review
+
+
+@pytest_asyncio.fixture
+async def existing_shelf(db_session, regular_user):
+    shelf = Shelf(
+        title="shelf",
+        is_private=False,
+        user_id=regular_user.id
+    )
+    db_session.add(shelf)
+    await db_session.flush()
+    await db_session.refresh(shelf)
+    return shelf
+
+
+@pytest_asyncio.fixture
+async def shelf_with_book(db_session, existing_book, regular_user):
+    shelf = Shelf(
+        title="shelf",
+        is_private=False,
+        user_id=regular_user.id,
+        books=[existing_book]
+    )
+    db_session.add(shelf)
+    await db_session.flush()
+    await db_session.refresh(shelf)
+    return shelf
+
+
+@pytest_asyncio.fixture
+async def private_shelf(db_session, regular_user):
+    shelf = Shelf(
+        title="private_shelf",
+        is_private=True,
+        user_id=regular_user.id
+    )
+    db_session.add(shelf)
+    await db_session.flush()
+    await db_session.refresh(shelf)
+    return shelf
+
+
+@pytest_asyncio.fixture
+async def shelf_with_img(db_session, regular_user):
+    shelf = Shelf(
+        title="private_shelf",
+        is_private=True,
+        image_url="shelves/images/image.jpg",
+        user_id=regular_user.id
+    )
+    db_session.add(shelf)
+    await db_session.flush()
+    await db_session.refresh(shelf)
+    return shelf
 
 
 @pytest_asyncio.fixture

@@ -64,6 +64,15 @@ async def update_shelf(
     return await service.update_shelf(data, shelf_id, user)
 
 
+@router.delete("/{shelf_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_shelf(
+    shelf_id: int,
+    user: User = Depends(get_current_user),
+    service: ShelfService = Depends(get_shelf_service),
+):
+    await service.delete_shelf(shelf_id, user)
+
+
 @router.put("/{shelf_id}/image", response_model=ShelfRead)
 async def update_shelf_image(
     shelf_id: int,

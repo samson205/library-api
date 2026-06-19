@@ -108,6 +108,16 @@ class ShelfService:
         await self.db.refresh(shelf)
         return shelf
 
+    async def delete_shelf(self, shelf_id: int, user: User) -> None:
+        shelf = await self.get_shelf_by_id(shelf_id, user.id)
+        if shelf.user_id != user.id and user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access"
+            )
+
+        await self.db.delete(shelf)
+        await self.db.commit()
+
     async def add_book_to_shelf(
         self, shelf_id: int, book_id: int, user_id: int
     ) -> None:

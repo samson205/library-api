@@ -186,6 +186,39 @@ async def test_update_shelf_not_found(client, user_headers):
 
 
 @pytest.mark.asyncio
+async def test_delete_shelf_success(client, db_session, existing_shelf, user_headers):
+    response = await client.delete(
+        f"/shelves/{existing_shelf.id}", headers=user_headers
+    )
+
+    assert response.status_code == 204
+
+    result = await db_session.scalars(
+        select(Shelf).where(Shelf.id == existing_shelf.id)
+    )
+    shelf = result.first()
+    assert shelf is None
+
+
+@pytest.mark.asyncio
+async def test_delete_shelf_by_another_user_forbidden(
+    client, existing_shelf, user_with_img_headers
+):
+    response = await client.delete(
+        f"/shelves/{existing_shelf.id}", headers=user_with_img_headers
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_delete_shelf_not_found(client, user_headers):
+    response = await client.delete("/shelves/101", headers=user_headers)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_update_shelf_image_success(
     client, db_session, existing_shelf, user_headers, mock_media_root
 ):

@@ -88,6 +88,42 @@ class BookService:
 
         new_book = await self.get_book_by_id(book.id, load_files=True)
         return new_book
+    
+    async def add_book_file(self, book_id: int, file: UploadFile) -> Book:
+        book = await self.get_book_by_id(book_id, load_files=True)
+        file_ext = StorageService.get_file_extension(file.filename)
+        if file_ext not in settings.ALLOWED_BOOK_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .epub, .fb2, .pdf files are allowed",
+            )
+        
+        files_path = settings.STORAGE_ROOT / "books" / "files"
+        file_name, file_size = await StorageService.save_file(
+            file, files_path, settings.MAX_BOOK_SIZE
+        )
+
+        try:
+            book_file = BookFile(
+                book=book,
+                book_id=book.id,
+                original_filename=file.filename,
+                file_path=f"books/files/{file_name}",
+                file_size=file_size,
+                file_format=file_ext.lstrip("."),
+            )
+            self.db.add(book_file)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            if file_name:
+                StorageService.remove_file(files_path / file_name)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create book",
+            )
+        
+        return book
 
     async def get_books(
         self, pagination: PaginationSchema, filters_schema: BookFilters

@@ -163,6 +163,55 @@ async def test_create_book_file_too_big(
 
 
 @pytest.mark.asyncio
+async def test_add_book_file_by_admin_success(client, existing_book, admin_headers, mock_storage_root):
+    file_data = {"file": ("book.pdf", b"fake-book-bytes-content", "application/pdf")}
+    response = await client.post(f"/books/{existing_book.id}/files", files=file_data, headers=admin_headers)
+
+    assert response.status_code == 201
+    response_json = response.json()
+    assert len(response_json.get("files")) == 1
+
+    files_in_storage = [f for f in mock_storage_root.glob("**/*") if f.is_file()]
+    saved_file = files_in_storage[0]
+    assert len(files_in_storage) == 1
+    assert saved_file is not None
+    assert saved_file.is_file()
+    assert saved_file.stat().st_size > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "use_headers, expected_status",
+    [(True, 403), (False, 401)]
+)
+async def test_add_book_file_forbidden_or_unauthorized(client, existing_book, user_headers, use_headers, expected_status):
+    file_data = {"file": ("book.pdf", b"fake-book-bytes-content", "application/pdf")}
+    if use_headers:
+        response = await client.post(f"/books/{existing_book.id}/files", files=file_data, headers=user_headers)
+    else:
+        response = await client.post(f"/books/{existing_book.id}/files", files=file_data)
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_add_book_file_too_big(client, existing_book, admin_headers):
+    file_data = {"file": ("book.pdf", b"0" * (settings.MAX_BOOK_SIZE + 100), "application/pdf")}
+    response = await client.post(f"/books/{existing_book.id}/files", files=file_data, headers=admin_headers)
+
+    assert response.status_code == 400
+    assert response.json().get("detail") == "File is too large"
+
+
+@pytest.mark.asyncio
+async def test_add_book_file_incorrect_type(client, existing_book, admin_headers):
+    file_data = {"file": ("book.pdf", b"0" * (settings.MAX_BOOK_SIZE + 100), "application/pdf")}
+    response = await client.post(f"/books/{existing_book.id}/files", files=file_data, headers=admin_headers)
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "use_author,use_genre,expected_count",
     [(False, False, 3), (False, True, 2), (True, False, 2), (True, True, 2)],

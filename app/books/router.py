@@ -85,6 +85,16 @@ async def read_book(
     )
 
 
+@router.post("/{book_id}/files", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
+async def add_book_file(
+    book_id: int,
+    file: UploadFile = File(...),
+    admin: User = Depends(get_current_admin),
+    service: BookService = Depends(get_book_service)
+):
+    return await service.add_book_file(book_id, file=file)
+
+
 @router.put("/{book_id}/image", response_model=BookRead)
 async def update_book_image(
     book_id: int,

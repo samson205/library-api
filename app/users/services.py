@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +27,7 @@ class UserService:
             )
 
         try:
-            user = User(email=data.email, hashed_password=hash_password(data.password))
+            user = User(email=data.email, username=self._generate_username(data.email), hashed_password=hash_password(data.password))
             self.db.add(user)
             await self.db.commit()
         except Exception:
@@ -44,6 +46,18 @@ class UserService:
             select(User).where(User.email == email, User.is_active == True)
         )
         return result.first()
+    
+    async def get_user_by_username(self, username: str) -> User:
+        result = await self.db.scalars(
+            select(User).where(User.username == username, User.is_active == True)
+        )
+        user = result.first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return user
 
     async def get_user_by_id(self, user_id: int) -> User:
         result = await self.db.scalars(
@@ -98,3 +112,9 @@ class UserService:
         if image_url:
             StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None
+    
+    @staticmethod
+    def _generate_username(email: str) -> str:
+        base_name = email.split("@")[0]
+        clean_name = "".join([c for c in base_name if c.isalnum() or c in "._"])
+        return f"{clean_name}_{uuid.uuid4().hex[:4]}"

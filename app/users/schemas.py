@@ -10,11 +10,18 @@ class UserCreate(BaseModel):
 
 class UserRead(BaseModel):
     id: Annotated[int, Field(..., description="ID пользователя")]
-    email: Annotated[EmailStr, Field(..., description="Email пользователя")]
-    role: Annotated[str, Field(..., description="Роль пользователя")]
+    username: Annotated[str, Field(..., description="Никнейм пользователя")]
     image_url: Annotated[
         str | None, Field(..., description="URL аватарки пользователя")
     ]
-    # is_active: Annotated[bool, Field(..., description="Активность пользователя")]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserCurrentRead(UserRead):
+    email: Annotated[EmailStr, Field(..., description="Email пользователя")]
+    role: Annotated[str, Field(..., description="Роль пользователя")]
+
+
+class UserUpdate(BaseModel):
+    username: Annotated[str | None, Field(None, min_length=3, max_length=20)]

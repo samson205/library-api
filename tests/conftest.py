@@ -93,6 +93,7 @@ async def client(db_session):
 async def admin_user(db_session):
     admin = User(
         email="admin@test.com",
+        username="admin_admin",
         hashed_password=hash_password("admin123"),
         role="admin",
         is_active=True,
@@ -106,6 +107,7 @@ async def admin_user(db_session):
 async def regular_user(db_session):
     user = User(
         email="reader@test.com",
+        username="reader_reader",
         hashed_password=hash_password("reader123"),
         role="reader",
         is_active=True,
@@ -135,6 +137,7 @@ async def user_headers(regular_user):
 async def user_with_img(db_session):
     user = User(
         email="user@test.com",
+        username="reader_img",
         hashed_password=hash_password("user_user"),
         role="reader",
         image_url="users/images/avatar.jpg",

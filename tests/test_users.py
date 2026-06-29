@@ -10,6 +10,7 @@ async def test_get_me_success(client, regular_user, user_headers):
     assert response.status_code == 200
     response_json = response.json()
     assert response_json["email"] == regular_user.email
+    assert response_json["username"] == regular_user.username
     assert response_json.get("hashed_password", None) is None
 
 
@@ -18,6 +19,61 @@ async def test_get_me_unauthorized(client):
     response = await client.get("/users/me")
 
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_user_success(client, regular_user, user_headers):
+    upd_data = {"username": "new_username"}
+    response = await client.patch("/users/me", json=upd_data, headers=user_headers)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json.get("username") == upd_data["username"]
+    assert response_json.get("hashed_password", None) is None
+
+
+@pytest.mark.asyncio
+async def test_update_user_unauthorized(client):
+    upd_data = {"username": "new_username"}
+    response = await client.patch("/users/me", json=upd_data)
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_user_incorrect_data(client, regular_user, user_headers):
+    upd_data = {"username": "0" * 100}
+    response = await client.patch("/users/me", json=upd_data, headers=user_headers)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_user_username_already_exists(
+    client, regular_user, user_with_img, user_headers
+):
+    upd_data = {"username": "reader_img"}
+    response = await client.patch("/users/me", json=upd_data, headers=user_headers)
+
+    assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_username_success(client, regular_user):
+    response = await client.get(f"/users/{regular_user.username}")
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json.get("username") == regular_user.username
+    assert response_json.get("email") is None
+    assert response_json.get("hashed_password") is None
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_username_not_found(client):
+    response = await client.get("/users/reader_reader")
+
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

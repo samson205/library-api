@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, status
 
 from app.users.services import UserService
-from app.users.schemas import UserRead, UserCurrentRead
+from app.users.schemas import UserRead, UserCurrentRead, UserUpdate
 from app.users.models import User
 from app.users.dependencies import get_current_user, get_user_service
 
@@ -13,8 +13,19 @@ async def get_me(user: User = Depends(get_current_user)):
     return user
 
 
+@router.patch("/me", response_model=UserCurrentRead)
+async def update_user(
+    data: UserUpdate,
+    user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service),
+):
+    return await service.update_user(data, user.id)
+
+
 @router.get("/{username}", response_model=UserRead)
-async def get_user_by_username(username: str, service: UserService = Depends(get_user_service)):
+async def get_user_by_username(
+    username: str, service: UserService = Depends(get_user_service)
+):
     return await service.get_user_by_username(username)
 
 

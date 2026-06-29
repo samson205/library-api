@@ -4,7 +4,7 @@ from fastapi import HTTPException, status, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.users.schemas import UserCreate
+from app.users.schemas import UserCreate, UserUpdate
 from app.users.models import User
 from app.core.security import hash_password
 from app.core.services import StorageService
@@ -27,7 +27,11 @@ class UserService:
             )
 
         try:
-            user = User(email=data.email, username=self._generate_username(data.email), hashed_password=hash_password(data.password))
+            user = User(
+                email=data.email,
+                username=self._generate_username(data.email),
+                hashed_password=hash_password(data.password),
+            )
             self.db.add(user)
             await self.db.commit()
         except Exception:
@@ -46,7 +50,7 @@ class UserService:
             select(User).where(User.email == email, User.is_active == True)
         )
         return result.first()
-    
+
     async def get_user_by_username(self, username: str) -> User:
         result = await self.db.scalars(
             select(User).where(User.username == username, User.is_active == True)
@@ -54,8 +58,7 @@ class UserService:
         user = result.first()
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
         return user
 
@@ -68,6 +71,29 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
+        return user
+
+    async def update_user(self, data: UserUpdate, user_id: int) -> User:
+        upd_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        new_username = upd_data.get("username", None)
+        user = await self.get_user_by_id(user_id)
+        if new_username is not None:
+            if user.username == new_username:
+                upd_data.pop("username", None)
+            else:
+                result = await self.db.scalars(
+                    select(User).where(User.username == new_username)
+                )
+                if result.first():
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Username already exists",
+                    )
+
+        for key, value in upd_data.items():
+            setattr(user, key, value)
+        await self.db.commit()
+        await self.db.refresh(user)
         return user
 
     async def load_user_avatar(self, user_id: int, image: UploadFile) -> User:
@@ -112,7 +138,7 @@ class UserService:
         if image_url:
             StorageService.remove_file(settings.MEDIA_ROOT / image_url)
         return None
-    
+
     @staticmethod
     def _generate_username(email: str) -> str:
         base_name = email.split("@")[0]

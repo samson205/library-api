@@ -114,9 +114,13 @@ class ShelfService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access"
             )
+        image_url = shelf.image_url
 
         await self.db.delete(shelf)
         await self.db.commit()
+
+        if image_url:
+            StorageService.remove_file(settings.MEDIA_ROOT / image_url)
 
     async def add_book_to_shelf(
         self, shelf_id: int, book_id: int, user_id: int
@@ -176,14 +180,13 @@ class ShelfService:
     async def update_shelf_image(
         self, shelf_id: int, user: User, image: UploadFile
     ) -> Shelf:
-        image_url = await StorageService.save_image(image, "shelves")
         shelf = await self.get_shelf_by_id(shelf_id, user.id)
         if user.id != shelf.user_id and user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can change the image of only your own shelf",
             )
-
+        image_url = await StorageService.save_image(image, "shelves")
         old_image_url = shelf.image_url
 
         try:

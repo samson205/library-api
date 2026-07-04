@@ -271,7 +271,7 @@ async def test_update_shelf_image_by_another_user(
 
 
 @pytest.mark.asyncio
-async def test_update_shelf_image_too_big(client, existing_shelf, user_headers):
+async def test_update_shelf_image_too_big(client, existing_shelf, user_headers, mock_media_root):
     image_data = {
         "image": ("image.jpg", b"0" * (settings.MAX_IMAGE_SIZE + 100), "image/jpeg")
     }
@@ -284,7 +284,7 @@ async def test_update_shelf_image_too_big(client, existing_shelf, user_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_shelf_image_incorrect_type(client, existing_shelf, user_headers):
+async def test_update_shelf_image_incorrect_type(client, existing_shelf, user_headers, mock_media_root):
     image_data = {"image": ("image.gif", b"fake-image-bytes-content", "image/gif")}
     response = await client.put(
         f"/shelves/{existing_shelf.id}/image", files=image_data, headers=user_headers
@@ -295,7 +295,7 @@ async def test_update_shelf_image_incorrect_type(client, existing_shelf, user_he
 
 @pytest.mark.asyncio
 async def test_delete_shelf_image_success(
-    client, shelf_with_img, user_headers, mock_media_root
+    mock_media_root, client, shelf_with_img, user_headers
 ):
     fake_image_path = mock_media_root / shelf_with_img.image_url
     fake_image_path.parent.mkdir(parents=True, exist_ok=True)

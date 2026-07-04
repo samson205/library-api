@@ -6,9 +6,7 @@ ENV HOME=/home/fast \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN mkdir -p $APP_HOME \
-    mkdir ${HOME}/media \
-    mkdir ${HOME}/storage \
+RUN mkdir -p $APP_HOME ${HOME}/media ${HOME}/storage \
     && addgroup -S fast \
     && adduser -S fast -G fast
 
